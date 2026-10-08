@@ -1,0 +1,17 @@
+DataForge
+Copyright 2026 Mahdi Kordian
+
+This product includes software developed by Mahdi Kordian
+(https://github.com/MahdiKordian/DataForge).
+
+---
+
+Built with the following open-source libraries:
+
+- Streamlit (Apache License 2.0) - https://streamlit.io
+- pandas (BSD 3-Clause) - https://pandas.pydata.org
+- NumPy (BSD 3-Clause) - https://numpy.org
+- Altair (BSD 3-Clause) - https://altair-viz.github.io
+- SciPy (BSD 3-Clause) - https://scipy.org
+- openpyxl (MIT) - https://openpyxl.readthedocs.io
+- PyArrow (Apache License 2.0) - https://arrow.apache.org
