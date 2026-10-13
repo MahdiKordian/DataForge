@@ -16,7 +16,7 @@ Automated data preparation for machine learning, with no pandas code required.
 <br><br>
 
 [![Version](https://img.shields.io/badge/version-v1.0.0-2ea44f)](https://github.com/MahdiKordian/DataForge)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org)
 [![Streamlit](https://img.shields.io/badge/built%20with-Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io)
 [![Last commit](https://img.shields.io/github/last-commit/MahdiKordian/DataForge)](https://github.com/MahdiKordian/DataForge/commits/main)
@@ -190,7 +190,7 @@ DataForge/
 ├── docs/               README images
 ├── requirements.txt    Python dependencies
 ├── README.md           This file
-├── LICENSE             Apache License 2.0
+├── LICENSE             MIT License
 ├── NOTICE              Third-party attributions
 └── .gitignore
 ```
@@ -274,7 +274,7 @@ Found a bug or have a suggestion? [Open an issue](https://github.com/MahdiKordia
 
 ## License
 
-Released under the [Apache License 2.0](LICENSE). Third-party attributions are listed in [NOTICE](NOTICE).
+Released under the [MIT License](LICENSE); versions up to 1.x were published under the Apache License 2.0 and stay under it. Third-party attributions are listed in [NOTICE](NOTICE).
 
 ## Acknowledgements
 

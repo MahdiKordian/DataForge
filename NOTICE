@@ -1,17 +1,37 @@
 DataForge
-Copyright 2026 Mahdi Kordian
+Copyright (c) 2026 Mahdi Kordian
 
-This product includes software developed by Mahdi Kordian
-(https://github.com/MahdiKordian/DataForge).
+DataForge is licensed under the MIT License (see the LICENSE file).
+The licenses of the open-source libraries and the sample datasets listed below
+are separate from it. This notice does not change the terms of either.
 
 ---
 
-Built with the following open-source libraries:
+Built with the following open-source libraries. Each one stays under its own
+license, and its copyright belongs to its authors.
 
 - Streamlit (Apache License 2.0) - https://streamlit.io
 - pandas (BSD 3-Clause) - https://pandas.pydata.org
 - NumPy (BSD 3-Clause) - https://numpy.org
-- Altair (BSD 3-Clause) - https://altair-viz.github.io
 - SciPy (BSD 3-Clause) - https://scipy.org
+- scikit-learn (BSD 3-Clause) - https://scikit-learn.org
+- Altair (BSD 3-Clause) - https://altair-viz.github.io
 - openpyxl (MIT) - https://openpyxl.readthedocs.io
 - PyArrow (Apache License 2.0) - https://arrow.apache.org
+- Requests (Apache License 2.0) - https://requests.readthedocs.io
+
+Optional, used only if you install them:
+
+- Polars (MIT) - https://pola.rs
+- DuckDB (MIT) - https://duckdb.org
+
+---
+
+Sample datasets in the sample_data folder. They are not part of DataForge and
+are not covered by the MIT License of DataForge. Check each dataset's original terms
+before you use or redistribute it.
+
+- Ames Housing, by Dean De Cock.
+- Palmer Penguins, by Dr. Kristen Gorman and the Palmer Station LTER,
+  packaged by Allison Horst and Alison Hill.
+- Telco Customer Churn, an IBM sample dataset.
