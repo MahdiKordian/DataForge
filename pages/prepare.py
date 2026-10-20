@@ -1,17 +1,26 @@
+# Copyright (c) 2026 Mahdi Kordian. Licensed under the MIT License; see LICENSE.
 import json
+import time
+import uuid
 from datetime import datetime
-import numpy as np
 import pandas as pd
 import streamlit as st
 
+from core import workflow_bar
+from dataforge import balance_train, build_pipeline, leakage_report, split_frame
+
 PAGES = {"dataset": "pages/dataset.py", "dashboard": "pages/dashboard.py"}
-STEPS = ["Clean", "Transform", "Encode", "Scale", "Split"]
+STEPS = ["Split", "Clean", "Transform", "Encode", "Scale"]
+PROCESS = STEPS[1:]
+LABELS = {"Clean": ["Text cleanup", "Column filter", "Missing values"],
+          "Transform": ["Outliers", "Skew", "Near-duplicate columns", "Dropped columns"],
+          "Encode": ["Encoding"], "Scale": ["Scaling"]}
 INFO = {
+    "Split": "Create train, validation and test sets FIRST, so every later step learns only from the training set.",
     "Clean": "Fix text, duplicates, constant or mostly empty columns, and missing values.",
     "Transform": "Handle outliers and skew, and drop columns that add nothing.",
     "Encode": "Turn text categories into numbers a model can use.",
     "Scale": "Put numeric columns on a similar range.",
-    "Split": "Create train, validation and test sets. Do this last.",
 }
 CASES = ["Keep as is", "lowercase", "UPPERCASE", "Title Case"]
 NUM_MISS = ["Median", "Mean", "Most common", "Fill with 0", "Drop rows", "Leave as is"]
@@ -39,6 +48,11 @@ CSS = """
 .dfd p{margin:8px 0 0;opacity:.7;max-width:62ch;font-size:17px}
 </style>
 """
+
+
+def defaults_for(step):
+    """Recommended settings, adjusted by the decisions recorded on the Advisor page."""
+    return {**DEFAULTS[step], **st.session_state.get("advisor_params", {}).get(step, {})}
 
 
 def nums(df):
@@ -74,217 +88,58 @@ def go(page):
         st.toast(f"Page not found: {PAGES[page]}")
 
 
-def f_clean(df, p, t, art):
-    notes = []
-    text = [c for c in df.columns if is_text(df[c])]
-    changed = 0
-    for c in text:
-        s = df[c].astype("string")
-        if p["trim"]:
-            s = s.str.strip()
-        s = {"lowercase": s.str.lower, "UPPERCASE": s.str.upper, "Title Case": s.str.title}.get(p["case"], lambda: s)()
-        s = s.mask(s.fillna("x") == "", pd.NA)
-        new = s.astype(object).where(s.notna(), np.nan)
-        changed += int(((new != df[c]) & ~(new.isna() & df[c].isna())).sum())
-        df[c] = new
-    if changed:
-        notes.append(f"tidied {changed} text cells")
-    if p["to_num"]:
-        conv = []
-        for c in text:
-            num = pd.to_numeric(df[c], errors="coerce")
-            if df[c].notna().any() and num.notna().sum() == df[c].notna().sum():
-                df[c], conv = num, conv + [c]
-        if conv:
-            notes.append(f"converted {len(conv)} text column(s) to numbers")
-    if t and p["drop_missing_target"] and df[t].isna().any():
-        k = int(df[t].isna().sum())
-        df = df[df[t].notna()]
-        notes.append(f"removed {k} rows with a missing target")
-    if p["dups"] and df.duplicated().any():
-        k = int(df.duplicated().sum())
-        df = df.drop_duplicates()
-        notes.append(f"removed {k} duplicate rows")
-    drop = []
-    if p["max_missing"] < 100:
-        drop += [c for c in df.columns if c != t and df[c].isna().mean() * 100 > p["max_missing"]]
-    if p["const"]:
-        drop += [c for c in df.columns if c != t and df[c].nunique(dropna=True) <= 1 and c not in drop]
-    if drop:
-        df = df.drop(columns=drop)
-        notes.append(f"dropped {len(drop)} column(s): {', '.join(map(str, drop[:5]))}")
-    filled, rows_cols = 0, []
-    for c in df.columns:
-        if c == t or not df[c].isna().any() or pd.api.types.is_datetime64_any_dtype(df[c]):
-            continue
-        strat = p["num_missing"] if pd.api.types.is_numeric_dtype(df[c]) else p["cat_missing"]
-        s, v = df[c], None
-        if strat == "Drop rows":
-            rows_cols.append(c)
-            continue
-        if strat == "Median":
-            v = s.median()
-        elif strat == "Mean":
-            v = s.mean()
-        elif strat == "Most common":
-            v = s.mode().iloc[0] if s.notna().any() else None
-        elif strat == "Fill with 0":
-            v = 0
-        elif strat.startswith("Fill with 'U"):
-            v = "Unknown"
-        if v is not None and not pd.isna(v):
-            filled += int(s.isna().sum())
-            df[c] = s.fillna(v)
-    if rows_cols:
-        k = int(df[rows_cols].isna().any(axis=1).sum())
-        df = df.dropna(subset=rows_cols)
-        notes.append(f"dropped {k} rows with missing values")
-    if filled:
-        notes.append(f"filled {filled} missing values")
-    return df.reset_index(drop=True), notes
-
-
-def f_transform(df, p, t, art):
-    notes = []
-    cols = [c for c in (p["out_cols"] or continuous(df, t)) if c in df.columns]
-    m = p["outliers"]
-    if m != "Leave as is":
-        mask, clipped = pd.Series(False, index=df.index), 0
-        for c in cols:
-            s = df[c]
-            if m.startswith("Clip at 1st"):
-                lo, hi = s.quantile([0.01, 0.99])
-            else:
-                q1, q3 = s.quantile([0.25, 0.75])
-                if q3 == q1:
-                    continue
-                lo, hi = q1 - 1.5 * (q3 - q1), q3 + 1.5 * (q3 - q1)
-            out = (s < lo) | (s > hi)
-            if m.startswith("Remove"):
-                mask |= out
-            else:
-                clipped += int(out.sum())
-                df[c] = s.clip(lo, hi)
-        if m.startswith("Remove") and mask.any():
-            notes.append(f"removed {int(mask.sum())} rows with outliers")
-            df = df[~mask]
-        elif clipped:
-            notes.append(f"clipped {clipped} outlier values")
-    if p["skew"]:
-        fixed = []
-        for c in continuous(df, t):
-            s = df[c]
-            if s.dropna().skew() > p["skew_thr"]:
-                x = s + max(0, -s.min())
-                df[c] = np.log1p(x) if p["skew_method"].startswith("Log") else np.sqrt(x)
-                fixed.append(c)
-        if fixed:
-            notes.append(f"reduced right skew in {len(fixed)} column(s): {', '.join(map(str, fixed[:5]))}")
-    if p["corr"]:
-        n = [c for c in nums(df) if c != t]
-        if len(n) > 1:
-            cm = df[n].corr().abs()
-            up = cm.where(np.triu(np.ones(cm.shape), 1).astype(bool))
-            hi = [c for c in up.columns if (up[c] > p["corr"]).any()]
-            if hi:
-                df = df.drop(columns=hi)
-                notes.append(f"dropped {len(hi)} near-duplicate column(s): {', '.join(map(str, hi[:5]))}")
-    manual = [c for c in p["drop"] if c in df.columns and c != t]
-    if manual:
-        df = df.drop(columns=manual)
-        notes.append(f"dropped {len(manual)} column(s) you chose")
-    return df.reset_index(drop=True), notes
-
-
-def f_encode(df, p, t, art):
-    notes, maps = [], {}
-    for c in [c for c in df.columns if c != t and pd.api.types.is_bool_dtype(df[c])]:
-        df[c] = df[c].astype(int)
-    if p["dates"]:
-        for c in [c for c in df.columns if pd.api.types.is_datetime64_any_dtype(df[c])]:
-            for part in ("year", "month", "day", "weekday"):
-                df[f"{c}_{part}"] = getattr(df[c].dt, "dayofweek" if part == "weekday" else part)
-            df = df.drop(columns=c)
-            notes.append(f"split date column `{c}` into year, month, day and weekday")
-    cat = [c for c in df.columns if c != t and is_text(df[c])]
-    low = [c for c in cat if df[c].nunique() <= p["max_onehot"]]
-    if low and p["low"] == "One-hot":
-        df = pd.get_dummies(df, columns=low, drop_first=p["drop_first"], dtype=int)
-        notes.append(f"one-hot encoded {len(low)} column(s)")
-    elif low:
-        for c in low:
-            df[c], maps[c] = ordinal(df[c])
-        notes.append(f"ordinal encoded {len(low)} column(s)")
-    for c in [c for c in cat if c not in low]:
-        if p["high"] == "Frequency":
-            df[c] = df[c].map(df[c].value_counts(normalize=True))
-        elif p["high"] == "Ordinal":
-            df[c], maps[c] = ordinal(df[c])
-        else:
-            df = df.drop(columns=c)
-    if len(cat) > len(low):
-        notes.append(f"{len(cat) - len(low)} high-cardinality column(s): {p['high'].lower()}")
-    if t and p["encode_target"] and is_text(df[t]):
-        df[t], maps[t] = ordinal(df[t])
-        notes.append(f"encoded target `{t}` as {len(maps[t])} numeric classes")
-    art["maps"] = maps
-    return df, notes
-
-
-def f_scale(df, p, t, art):
-    if p["method"] == SCALERS[3]:
-        return df, []
-    cols = [c for c in (p["cols"] or continuous(df, t)) if c in df.columns]
-    params, done = {}, 0
-    for c in cols:
-        s = df[c].astype(float)
-        if p["method"].startswith("Standard"):
-            a, b = s.mean(), s.std()
-        elif p["method"].startswith("Min"):
-            a, b = s.min(), s.max() - s.min()
-        else:
-            a, b = s.median(), s.quantile(0.75) - s.quantile(0.25)
-        if b and not pd.isna(b):
-            df[c], params[c], done = (s - a) / b, {"center": a, "scale": b}, done + 1
-    art["params"] = params
-    return df, [f"scaled {done} column(s) with {p['method'].split(' (')[0].lower()} scaling"] if done else []
-
-
-def do_split(df, p, t):
-    """Returns an error string, or (train, val, test, notes)."""
-    clf = t is not None and is_class(df[t].dropna())
-    rng = np.random.default_rng(int(p["seed"]))
-    codes = pd.factorize(df[t])[0] if (p["stratify"] and clf) else np.zeros(len(df), int)
-    tr, va, te = [], [], []
-    for k in np.unique(codes):
-        g = rng.permutation(np.flatnonzero(codes == k))
-        nt, nv = int(round(len(g) * p["test"] / 100)), int(round(len(g) * p["val"] / 100))
-        te += list(g[:nt])
-        va += list(g[nt:nt + nv])
-        tr += list(g[nt + nv:])
-    if not tr or not te:
-        return "The split left an empty train or test set. Use smaller percentages or more rows."
-    train, test = df.iloc[rng.permutation(tr)], df.iloc[rng.permutation(te)]
-    val = df.iloc[rng.permutation(va)] if va else None
-    notes = [f"train {len(train):,} / " + (f"validation {len(val):,} / " if val is not None else "") + f"test {len(test):,}"]
-    if clf and p["balance"] != "None":
-        cnt = train[t].value_counts()
-        n = cnt.max() if p["balance"].startswith("Over") else cnt.min()
-        train = pd.concat([g.sample(n, replace=len(g) < n, random_state=int(p["seed"])) for _, g in train.groupby(t)])
-        train = train.sample(frac=1, random_state=int(p["seed"]))
-        notes.append(f"balanced the training set by {p['balance'].split()[0].lower()} ({len(train):,} rows)")
-    r = lambda d: None if d is None else d.reset_index(drop=True)
-    return r(train), r(val), r(test), notes
-
-
-FUNCS = {"Clean": f_clean, "Transform": f_transform, "Encode": f_encode, "Scale": f_scale}
-
-
-def clear_split():
+def clear_prepared():
+    """Forget the split, the pipeline and everything derived from them."""
     ss = st.session_state
     ss.split_done = False
-    for k in ("train_df", "val_df", "test_df", "split_info"):
+    for k in ("train_df", "val_df", "test_df", "split_info", "raw_splits", "pipeline", "leakage", "prep_warnings", "n_train", "effective_cfg"):
         ss.pop(k, None)
+    ss.pipeline_cfg, ss.cfg_stack = {}, []
+
+
+def split_target():
+    ss = st.session_state
+    return (ss.get("split_info") or {}).get("target")
+
+
+def effective_cfg(cfg=None):
+    """The steps plus the variable types the user confirmed on the Types page."""
+    ss = st.session_state
+    cfg = dict(ss.pipeline_cfg if cfg is None else cfg)
+    if ss.get("var_types"):
+        cfg["Types"] = {"types": dict(ss.var_types), "orders": dict(ss.get("var_orders", {}))}
+    return cfg
+
+
+def stage_df(step):
+    """The TRAINING data as the given step will see it (only the earlier steps applied)."""
+    ss = st.session_state
+    before = {k: v for k, v in ss.pipeline_cfg.items() if PROCESS.index(k) < PROCESS.index(step)}
+    return build_pipeline(effective_cfg(before), split_target()).fit_transform(ss.raw_splits["train"])
+
+
+def rebuild():
+    """Fit the whole pipeline on the raw training set, then apply it to validation and test."""
+    ss = st.session_state
+    raw, info, t = ss.raw_splits, ss.split_info, split_target()
+    ss.effective_cfg = effective_cfg()
+    pipe = build_pipeline(ss.effective_cfg, t)
+    train = pipe.fit_transform(raw["train"])
+    warns, val = [], None
+    if raw["val"] is not None:
+        val = pipe.transform(raw["val"])
+        warns += pipe.warnings_
+    test = pipe.transform(raw["test"])
+    warns += pipe.warnings_
+    if train.empty or test.empty:
+        raise ValueError("Preparation removed every row of the training or test set.")
+    ss.pipeline, ss.prep_warnings = pipe, sorted(set(warns))
+    ss.df = pd.concat([x for x in (train, val, test) if x is not None], ignore_index=True)
+    ss.n_train = len(train)
+    ss.train_df = balance_train(train, t, info["balance"], info["seed"])
+    ss.val_df, ss.test_df = val, test
+    ss.leakage = leakage_report(raw["train"], raw["val"], raw["test"], t, processed_train=train)
+    return pipe
 
 
 def done_steps():
@@ -294,31 +149,88 @@ def done_steps():
 def run_step(step, p):
     """Applies one step, logs it and snapshots it. Returns notes, or None on error."""
     ss = st.session_state
-    df, t = ss.df, (ss.target if ss.target in ss.df.columns else None)
-    art, extra = {}, {}
+    t0 = time.perf_counter()
     if step == "Split":
-        res = do_split(df, p, t)
-        if isinstance(res, str):
-            st.error(res)
+        base = ss.snapshots[0]["df"]
+        t = ss.target if ss.target in base.columns else None
+        try:
+            train, val, test, notes = split_frame(base, t, p["test"], p["val"], p["seed"], p["stratify"])
+        except ValueError as e:
+            st.error(str(e))
             return None
-        train, val, test, notes = res
-        ss.train_df, ss.val_df, ss.test_df = train, val, test
-        ss.split_info = {"test_pct": p["test"], "val_pct": p["val"], "seed": p["seed"], "balance": p["balance"]}
+        ss.log = [e for e in ss.log if e.get("step") not in STEPS]   # a new split restarts preparation
+        ss.snapshots = ss.snapshots[:1]
+        clear_prepared()
+        ss.raw_splits = {"train": train, "val": val, "test": test}
+        ss.split_info = {"test_pct": p["test"], "val_pct": p["val"], "seed": p["seed"],
+                         "balance": p["balance"], "target": t, "stratify": p["stratify"]}
         ss.split_done = True
-        new = df
+        rebuild()
+        if p["balance"] != "None" and t:
+            notes.append(f"the training set will be balanced by {p['balance'].split()[0].lower()} after preparation")
     else:
-        if ss.split_done:
-            clear_split()
-            st.toast("The train/test split was reset because the data changed. Run Split again.")
-        new, notes = FUNCS[step](df.copy(), p, t, art)
-        ss.df = new.reset_index(drop=True)
-        ss.snapshots.append({"name": f"After {step.lower()}", "df": ss.df.copy()})
-        ss.setdefault("artifacts", {})[step] = art
+        if not ss.get("split_done"):
+            st.error("Run Split first, so the steps can learn from the training set only.")
+            return None
+        prev = ss.pipeline_cfg.get(step)
+        ss.pipeline_cfg[step] = p
+        try:
+            pipe = rebuild()
+        except Exception as e:
+            if prev is None:
+                ss.pipeline_cfg.pop(step, None)
+            else:
+                ss.pipeline_cfg[step] = prev
+            st.error(f"{step} could not be applied: {e}")
+            return None
+        ss.cfg_stack.append((step, prev))
+        notes = [n for e in pipe.log_ if e["step"] in LABELS[step] for n in e["notes"]]
+    ss.snapshots.append({"name": f"After {step.lower()}", "df": ss.df.copy()})
     now = datetime.now().strftime("%H:%M:%S")
     ss.modified_at = now
-    ss.log.append({"time": now, "step": step, "detail": "; ".join(notes).capitalize() if notes else "No changes needed",
+    ss.log.append({"run_id": uuid.uuid4().hex[:8], "seconds": round(time.perf_counter() - t0, 2), "time": now, "step": step,
+                   "detail": "; ".join(notes).capitalize() if notes else "No changes needed",
                    "rows": len(ss.df), "cols": ss.df.shape[1], "params": jsonable(p)})
     return notes
+
+
+def preview(step, p):
+    """Shows what a step would do, without changing anything. Large data is sampled."""
+    ss = st.session_state
+    if step == "Split":
+        base = ss.snapshots[0]["df"]
+        t0 = ss.target if ss.target in base.columns else None
+        try:
+            tr, va, te, notes = split_frame(base, t0, p["test"], p["val"], p["seed"], p["stratify"])
+        except ValueError as e:
+            st.error(str(e))
+            return
+        st.info("Preview: " + "; ".join(notes))
+        return
+    raw = ss.raw_splits["train"]
+    sample = raw.sample(min(len(raw), 20_000), random_state=0) if len(raw) > 20_000 else raw
+    try:
+        now = build_pipeline(effective_cfg(), split_target()).fit_transform(sample)
+        pipe = build_pipeline(effective_cfg({**ss.pipeline_cfg, step: p}), split_target())
+        after = pipe.fit_transform(sample)
+    except Exception as e:
+        st.error(f"This step would fail: {e}")
+        return
+    miss = lambda d: f"{d.isna().sum().sum():,}"
+    st.dataframe(pd.DataFrame({"": ["rows", "columns", "missing cells"],
+                               "now": [f"{len(now):,}", str(now.shape[1]), miss(now)],
+                               "after this step": [f"{len(after):,}", str(after.shape[1]), miss(after)]}),
+                 hide_index=True, width="stretch")
+    notes = [n for e in pipe.log_ if e["step"] in LABELS[step] for n in e["notes"]]
+    st.markdown("**Would do:** " + ("; ".join(notes) if notes else "nothing"))
+    gone, new = [c for c in now.columns if c not in after.columns], [c for c in after.columns if c not in now.columns]
+    if gone:
+        st.caption("Columns removed: " + ", ".join(map(str, gone[:10])))
+    if new:
+        st.caption("Columns added: " + ", ".join(map(str, new[:10])))
+    st.dataframe(after.head(5), width="stretch")
+    st.caption("Nothing was changed" + (" (preview uses a sample of the training set)." if sample is not raw else ".")
+               + " Press Run to apply, or Undo afterwards.")
 
 
 def finish(lines):
@@ -337,7 +249,7 @@ def apply_step(step, p):
 def apply_all():
     lines = []
     for step in STEPS:
-        notes = run_step(step, dict(DEFAULTS[step]))
+        notes = run_step(step, defaults_for(step))
         if notes is None:
             break
         lines.append(f"**{step}:** " + ("; ".join(notes) if notes else "nothing needed changing"))
@@ -350,10 +262,19 @@ def undo():
     if not idx:
         return
     entry = ss.log.pop(idx[-1])
-    if entry["step"] != "Split" and len(ss.snapshots) > 1:
-        ss.snapshots.pop()
-        ss.df = ss.snapshots[-1]["df"].copy()
-    clear_split()
+    if entry["step"] == "Split" or not ss.get("cfg_stack"):
+        ss.df = ss.snapshots[0]["df"].copy()
+        ss.snapshots = ss.snapshots[:1]
+        clear_prepared()
+    else:
+        step, prev = ss.cfg_stack.pop()
+        if prev is None:
+            ss.pipeline_cfg.pop(step, None)
+        else:
+            ss.pipeline_cfg[step] = prev
+        rebuild()
+        if len(ss.snapshots) > 1:
+            ss.snapshots.pop()
     ss.modified_at = datetime.now().strftime("%H:%M:%S")
     ss.flash = [f"Undid **{entry['step']}**."]
     st.rerun()
@@ -365,7 +286,7 @@ def reset():
     ss.snapshots = ss.snapshots[:1]
     ss.log = [e for e in ss.log if e.get("step") not in STEPS]
     ss.artifacts = {}
-    clear_split()
+    clear_prepared()
     ss.modified_at = datetime.now().strftime("%H:%M:%S")
     ss.log.append({"time": ss.modified_at, "step": "Reset", "detail": "Reset to the original data",
                    "rows": len(ss.df), "cols": ss.df.shape[1]})
@@ -390,29 +311,33 @@ def facts(step, df, t):
 
 def ui(step, df, t, key):
     k = lambda name: f"p_{step}_{name}_{key}"
-    d, p = DEFAULTS[step], {}
+    d, p = defaults_for(step), {}
     a, b = st.columns(2)
     if step == "Clean":
         p["trim"] = a.checkbox("Trim spaces in text", d["trim"], key=k("trim"))
-        p["case"] = a.selectbox("Text case", CASES, key=k("case"))
+        p["case"] = a.selectbox("Text case", CASES, index=CASES.index(d["case"]), key=k("case"))
         p["to_num"] = a.checkbox("Convert text that looks like numbers", d["to_num"], key=k("to_num"))
         p["dups"] = a.checkbox("Remove duplicate rows", d["dups"], key=k("dups"))
         p["const"] = a.checkbox("Drop columns with a single value", d["const"], key=k("const"))
         p["max_missing"] = b.slider("Drop columns missing more than (%)", 0, 100, d["max_missing"], key=k("mm"),
                                     help="100 keeps every column.")
-        p["num_missing"] = b.selectbox("Missing numbers", NUM_MISS, key=k("nm"))
-        p["cat_missing"] = b.selectbox("Missing text", CAT_MISS, key=k("cm"))
+        p["num_missing"] = b.selectbox("Missing numbers", NUM_MISS, index=NUM_MISS.index(d["num_missing"]), key=k("nm"))
+        p["cat_missing"] = b.selectbox("Missing text", CAT_MISS, index=CAT_MISS.index(d["cat_missing"]), key=k("cm"))
+        p["per_column"] = dict(d.get("per_column", {}))
+        if p["per_column"]:
+            b.caption(f"{len(p['per_column'])} column(s) use the choice you made on the Advisor page.")
         p["drop_missing_target"] = bool(t) and b.checkbox("Remove rows where the target is missing", True, key=k("tm"))
     elif step == "Transform":
         cont = continuous(df, t)
-        p["outliers"] = a.selectbox("Outliers", OUTLIERS, index=1, key=k("out"))
+        p["outliers"] = a.selectbox("Outliers", OUTLIERS, index=OUTLIERS.index(d["outliers"]), key=k("out"))
         p["out_cols"] = a.multiselect("Apply to columns", cont, default=cont, key=k("oc"))
         p["skew"] = b.checkbox("Reduce right skew", d["skew"], key=k("skew"))
         p["skew_thr"] = b.slider("Skew above", 0.5, 3.0, d["skew_thr"], 0.1, key=k("st"))
-        p["skew_method"] = b.selectbox("Method", ["Log (log1p)", "Square root"], key=k("sm"))
+        p["skew_method"] = b.selectbox("Method", ["Log (log1p)", "Square root"], index=["Log (log1p)", "Square root"].index(d["skew_method"]), key=k("sm"))
         use = a.checkbox("Drop near-duplicate columns", True, key=k("cu"))
         p["corr"] = b.slider("When |correlation| is above", 0.7, 0.99, d["corr"], 0.01, key=k("cr")) if use else None
-        p["drop"] = st.multiselect("Also drop these columns", [c for c in df.columns if c != t], key=k("drop"))
+        p["drop"] = st.multiselect("Also drop these columns", [c for c in df.columns if c != t],
+                                 default=[c for c in d["drop"] if c in df.columns and c != t], key=k("drop"))
     elif step == "Encode":
         p["low"] = a.selectbox("Few categories (up to the limit)", ["One-hot", "Ordinal"], key=k("low"))
         p["max_onehot"] = a.number_input("Category limit", 2, 100, d["max_onehot"], key=k("lim"))
@@ -425,7 +350,7 @@ def ui(step, df, t, key):
         cont = continuous(df, t)
         p["method"] = a.selectbox("Method", SCALERS, key=k("m"))
         p["cols"] = b.multiselect("Columns", cont, default=cont, key=k("c"))
-        st.caption("Statistics come from the full dataset. For strictly leak-free modelling, fit the scaler on the training set only.")
+        st.caption("Statistics are learned from the training set only, then reused for validation and test.")
     else:
         clf = bool(t) and is_class(df[t].dropna())
         p["test"] = a.slider("Test set (%)", 5, 40, d["test"], key=k("te"))
@@ -433,6 +358,7 @@ def ui(step, df, t, key):
         p["seed"] = b.number_input("Random seed", 0, 10_000, d["seed"], key=k("sd"))
         p["stratify"] = clf and b.checkbox("Keep class proportions (stratify)", True, key=k("sf"))
         p["balance"] = b.selectbox("Balance the training set", ["None", "Oversample minority", "Undersample majority"],
+                                   index=["None", "Oversample minority", "Undersample majority"].index(d["balance"]),
                                    key=k("bal")) if clf else "None"
         if not clf:
             st.caption("Pick a classification target on the Dashboard to enable stratifying and balancing.")
@@ -441,11 +367,24 @@ def ui(step, df, t, key):
 
 ss = st.session_state
 for k_, v_ in {"df": None, "df_name": "untitled", "target": None, "log": [], "snapshots": [],
-               "modified_at": None, "split_done": False, "artifacts": {}}.items():
+               "modified_at": None, "split_done": False, "artifacts": {},
+               "pipeline_cfg": {}, "cfg_stack": []}.items():
     ss.setdefault(k_, v_)
 st.markdown(CSS, unsafe_allow_html=True)
-st.markdown('<div class="dfd"><h1>Prepare</h1><p>Run the steps one by one, or run them all with '
-            "recommended settings. Every step is logged and can be undone.</p></div>", unsafe_allow_html=True)
+workflow_bar("Prepare")
+st.markdown('<div class="dfd"><h1>Prepare</h1><p>Split first, then run the steps one by one, or run them all with '
+            "recommended settings. Every step learns from the training set only, is logged and can be undone.</p></div>",
+            unsafe_allow_html=True)
+
+replay = ss.pop("pending_replay", None)
+if replay and ss.df is not None:
+    with st.spinner("Re-running the saved steps..."):
+        for e_ in replay:
+            if run_step(e_["step"], e_["params"]) is None:
+                st.warning(f"Stopped at {e_['step']}: the saved settings did not fit this data.")
+                break
+        else:
+            ss.flash = [f"Re-ran {len(replay)} saved step(s)."]
 
 df = ss.df
 if df is None:
@@ -464,6 +403,12 @@ focus = focus or next((s for s in STEPS if s not in done), None)
 flash = ss.pop("flash", None)
 if flash:
     st.success("\n\n".join(flash))
+if ss.split_done and split_target() != t:
+    st.warning("The target column changed after the split. Run Split again so the steps use the new target.")
+for item in ss.get("leakage", []):
+    (st.error if item["level"] == "error" else st.warning)(item["message"])
+for w_ in ss.get("prep_warnings", []):
+    st.warning(w_)
 
 m = st.columns(4)
 m[0].metric("Rows", f"{len(df):,}")
@@ -472,13 +417,13 @@ m[2].metric("Missing cells", f"{df.isna().sum().sum() / max(df.size, 1) * 100:.1
 m[3].metric("Steps done", f"{len(done)} / {len(STEPS)}")
 
 a, b, c = st.columns([2, 1, 1])
-if a.button("Run all steps with recommended settings", type="primary", use_container_width=True):
+if a.button("Run all steps with recommended settings", type="primary", width="stretch"):
     with st.spinner("Preparing your data..."):
         apply_all()
 has_steps = any(e.get("step") in STEPS for e in ss.log)
-if b.button("Undo last step", disabled=not has_steps, use_container_width=True):
+if b.button("Undo last step", disabled=not has_steps, width="stretch"):
     undo()
-with c.popover("Reset to original", use_container_width=True, disabled=not has_steps):
+with c.popover("Reset to original", width="stretch", disabled=not has_steps):
     st.write("This removes every step and restores the data as it was loaded.")
     if st.button("Yes, reset", type="primary"):
         reset()
@@ -487,18 +432,26 @@ st.markdown('<div class="dfd"><h2>Steps</h2></div>', unsafe_allow_html=True)
 for step in STEPS:
     with st.expander(f"{step}  ·  {'done' if step in done else 'to do'}", expanded=(step == focus)):
         st.caption(INFO[step])
-        st.markdown(facts(step, df, t))
-        params = ui(step, df, t, key)
+        locked = step != "Split" and not ss.split_done
+        if locked:
+            st.info("Run Split first.")
+            continue
+        view = df if step == "Split" else stage_df(step)
+        st.markdown(facts(step, view, t))
+        params = ui(step, view, t, key)
         if step == "Split" and ss.split_done:
             parts = [("Train", ss.train_df), ("Validation", ss.val_df), ("Test", ss.test_df)]
             st.dataframe(pd.DataFrame([{"set": n_, "rows": len(d_), "share %": len(d_) / len(df) * 100}
                                        for n_, d_ in parts if d_ is not None]),
-                         hide_index=True, use_container_width=True)
+                         hide_index=True, width="stretch")
             st.caption("Stored as train_df, val_df and test_df in session state.")
-        if st.button(f"Run {step}", key=f"run_{step}_{key}", type="primary" if step == focus else "secondary"):
+        pv, rn, _ = st.columns([1, 1, 3])
+        if pv.button(f"Preview {step}", key=f"prev_{step}_{key}"):
+            preview(step, params)
+        if rn.button(f"Run {step}", key=f"run_{step}_{key}", type="primary" if step == focus else "secondary"):
             apply_step(step, params)
 
 st.write("")
 n1, n2, _ = st.columns([1, 1, 2])
-if n1.button("See the analysis", use_container_width=True):
+if n1.button("See the analysis", width="stretch"):
     go("dashboard")
