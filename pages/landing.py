@@ -1,7 +1,8 @@
+# Copyright (c) 2026 Mahdi Kordian. Licensed under the MIT License; see LICENSE.
 import html
 import streamlit as st
 
-from core import (KINDS, PAGES, SAMPLES, VERSION, commit, find_column, go,
+from core import (KINDS, PAGES, SAMPLES, VERSION, commit, find_column, go, sample_path,
                   init_state, load_sample, read_upload)
 
 STEPS = [
@@ -161,7 +162,10 @@ st.markdown(
 for col, s in zip(st.columns(len(SAMPLES)), SAMPLES):
     with col.container(border=True):
         st.markdown(sample_card(s), unsafe_allow_html=True)
-        if st.button("Use this sample", key=f"sample_{s['key']}", width="stretch"):
+        present = sample_path(s) is not None
+        if not present:
+            st.caption(f"File missing: put `{s['file']}` in the `sample_data` folder.")
+        if st.button("Use this sample", key=f"sample_{s['key']}", width="stretch", disabled=not present):
             try:
                 with st.spinner(f"Loading {s['title']}..."):
                     df, name = load_sample(s)
