@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Mahdi Kordian. Licensed under the MIT License; see LICENSE.
 import html
 import io
 from datetime import datetime
@@ -5,6 +6,9 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import streamlit as st
+
+from core import clear_all
+from dataforge.security import check_upload, safe_fetch
 
 PAGES = {
     "dashboard": "pages/dashboard.py",
@@ -50,6 +54,7 @@ def go(page):
 
 
 def commit(df, name, source, target):
+    clear_all()                       # split, pipeline, types, decisions and contract of the old dataset must not survive
     ss = st.session_state
     now = datetime.now().strftime("%H:%M:%S")
     ss.df, ss.df_name, ss.target, ss.modified_at = df, name, target, now
@@ -63,9 +68,7 @@ def commit(df, name, source, target):
 
 
 def clear_dataset():
-    ss = st.session_state
-    ss.df, ss.target, ss.modified_at, ss.split_done = None, None, None, False
-    ss.log, ss.snapshots = [], []
+    clear_all()
 
 
 def tidy(df):
@@ -101,15 +104,17 @@ def parse_bytes(raw, kind, sep, enc, header, sheet):
 
 @st.cache_data(show_spinner=False, ttl=600)
 def parse_url(url):
-    u = url.lower().split("?")[0]
-    if u.endswith(".json"):
-        df = pd.read_json(url)
-    elif u.endswith((".xlsx", ".xls")):
-        df = pd.read_excel(url)
-    elif u.endswith(".parquet"):
-        df = pd.read_parquet(url)
+    raw, fname = safe_fetch(url)           # public http(s) only, size-capped, every redirect checked
+    ext = check_upload(fname if "." in fname else fname + ".csv", raw)
+    buf = io.BytesIO(raw)
+    if ext == "json":
+        df = pd.read_json(buf)
+    elif ext in ("xlsx", "xls"):
+        df = pd.read_excel(buf)
+    elif ext == "parquet":
+        df = pd.read_parquet(buf)
     else:
-        df = pd.read_csv(url, sep=None, engine="python")
+        df = pd.read_csv(buf, sep=None, engine="python")
     return tidy(df)
 
 
@@ -187,10 +192,12 @@ def source_upload():
     f = st.file_uploader("Drop a file here or browse", type=list(KINDS))
     if not f:
         return None
-    raw, kind = f.getvalue(), KINDS[f.name.rsplit(".", 1)[-1].lower()]
+    raw = f.getvalue()
     sep = enc = sheet = None
     header = True
     try:
+        check_upload(f.name, raw)          # size, type and content must match what the name claims
+        kind = KINDS[f.name.rsplit(".", 1)[-1].lower()]
         with st.expander("Import options"):
             if kind == "csv":
                 sep, enc, header = csv_options("up")
@@ -247,7 +254,7 @@ def source_manual():
     if not cols:
         return None
     seed = pd.DataFrame({c: pd.Series([None] * 5, dtype=object) for c in cols})
-    edited = st.data_editor(seed, num_rows="dynamic", use_container_width=True, key=f"manual_{cols_text}")
+    edited = st.data_editor(seed, num_rows="dynamic", width="stretch", key=f"manual_{cols_text}")
     df = edited.replace("", np.nan).dropna(how="all").reset_index(drop=True)
     if df.empty:
         st.caption("Fill in at least one row to continue.")
@@ -278,13 +285,13 @@ def preview_and_load(df, default_name, source):
     m[1].metric("Columns", df.shape[1])
     m[2].metric("Size", fmt_bytes(int(df.memory_usage(deep=True).sum())))
     m[3].metric("Missing cells", f"{df.isna().sum().sum() / max(df.size, 1) * 100:.1f}%")
-    st.dataframe(df.head(PREVIEW_ROWS), use_container_width=True, height=320)
+    st.dataframe(df.head(PREVIEW_ROWS), width="stretch", height=320)
     if len(df) > PREVIEW_ROWS:
         st.caption(f"Showing the first {PREVIEW_ROWS} of {len(df):,} rows.")
     with st.expander("Column details"):
         info = pd.DataFrame({"column": df.columns, "type": df.dtypes.astype(str).values,
                              "missing %": df.isna().mean().values * 100, "unique": df.nunique().values})
-        st.dataframe(info, hide_index=True, use_container_width=True, column_config={
+        st.dataframe(info, hide_index=True, width="stretch", column_config={
             "missing %": st.column_config.ProgressColumn("missing %", min_value=0, max_value=100, format="%.1f%%")})
 
     section("Settings")
@@ -322,9 +329,9 @@ if ss.df is not None:
         unsafe_allow_html=True,
     )
     a, b, _ = st.columns([1, 1, 4])
-    if a.button("Open dashboard", key="cur_dash", use_container_width=True):
+    if a.button("Open dashboard", key="cur_dash", width="stretch"):
         go("dashboard")
-    if b.button("Remove", key="cur_clear", use_container_width=True):
+    if b.button("Remove", key="cur_clear", width="stretch"):
         clear_dataset()
         st.rerun()
 
