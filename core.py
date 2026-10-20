@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Mahdi Kordian. Licensed under the MIT License; see LICENSE.
 
 from __future__ import annotations
 import io
@@ -8,7 +9,7 @@ import pandas as pd
 import streamlit as st
 
 APP_NAME = "DataForge"
-VERSION = "v1.0.0"
+VERSION = "v2.0.0"
 NONE = "None (unsupervised)"
 
 ROOT = Path(__file__).resolve().parent
@@ -31,19 +32,19 @@ ENCODINGS = ("utf-8-sig", "cp1256", "latin-1")
 
 SAMPLES = [
     {
-        "key": "ames", "icon": "🏠", "title": "Ames Housing", "file": "Ames Housing.csv",
+        "key": "ames", "icon": "🏠", "title": "Ames Housing", "file": "Ames_Housing.csv",
         "task": "Regression", "target": "SalePrice",
         "blurb": "Home sales from Ames, Iowa, described by dozens of features. Predict the sale price.",
         "tags": ["Many columns", "Missing values", "Skewed prices"],
     },
     {
-        "key": "telco", "icon": "📱", "title": "Telco Customer Churn", "file": "Telco Customer Churn.csv",
+        "key": "telco", "icon": "📱", "title": "Telco Customer Churn", "file": "Telco_Customer_Churn.csv",
         "task": "Classification", "target": "Churn",
         "blurb": "Customers of a telecom company and their contracts. Predict who is going to leave.",
         "tags": ["Class imbalance", "Number stored as text", "ID column"],
     },
     {
-        "key": "penguins", "icon": "🐧", "title": "Palmer Penguins", "file": "Palmer Penguins.csv",
+        "key": "penguins", "icon": "🐧", "title": "Palmer Penguins", "file": "Palmer_Penguins.csv",
         "task": "Classification", "target": "species",
         "blurb": "Measurements of 344 penguins from three islands. Predict the species (three classes).",
         "tags": ["Three classes", "Missing values", "Numbers and text mixed"],
@@ -57,18 +58,26 @@ def _defaults() -> dict:
             "modified_at": None, "split_done": False, "artifacts": {}}
 
 
-_TRANSIENT = ("train_df", "val_df", "test_df", "split_info", "prepare_focus", "flash", "just_loaded")
+def _derived_defaults() -> dict:
+    """Everything that belongs to one dataset: choices, decisions and settings. Fresh containers on every call."""
+    return {"pipeline_cfg": {}, "cfg_stack": [], "decisions": {}, "advisor_params": {}, "var_types": None, "var_orders": {},
+            "contract": None, "validation_status": None}
+
+
+_TRANSIENT = ("train_df", "val_df", "test_df", "split_info", "prepare_focus", "flash", "just_loaded", "raw_splits", "pipeline",
+              "leakage", "prep_warnings", "n_train", "effective_cfg", "visited", "_lab", "_opt", "_contract_file",
+              "pending_replay", "pending_open")
 
 
 def init_state() -> None:
-    for k, v in _defaults().items():
+    for k, v in {**_defaults(), **_derived_defaults()}.items():
         st.session_state.setdefault(k, v)
 
 
 def clear_all() -> None:
     """Forget the dataset and everything derived from it (log, snapshots, splits, artifacts)."""
     ss = st.session_state
-    for k, v in _defaults().items():
+    for k, v in {**_defaults(), **_derived_defaults()}.items():
         ss[k] = v
     for k in _TRANSIENT:
         ss.pop(k, None)
@@ -151,14 +160,29 @@ def parse_bytes(raw: bytes, filename: str) -> pd.DataFrame:
 
 def read_upload(f) -> tuple[pd.DataFrame, str]:
     """f is a Streamlit UploadedFile. Returns (dataframe, dataset name)."""
-    return parse_bytes(f.getvalue(), f.name), stem(f.name)
+    from dataforge.security import check_upload
+    raw = f.getvalue()
+    check_upload(f.name, raw)
+    return parse_bytes(raw, f.name), stem(f.name)
+
+
+def sample_path(spec: dict) -> Path | None:
+    """The sample's file, or None. Case, spaces, dashes and underscores in the file name do not matter."""
+    exact = SAMPLE_DIR / spec["file"]
+    if exact.is_file():
+        return exact
+    if not SAMPLE_DIR.is_dir():
+        return None
+    norm = lambda s: re.sub(r"[\s_-]+", "", s).lower()
+    return next((p for p in sorted(SAMPLE_DIR.iterdir()) if p.is_file() and norm(p.name) == norm(spec["file"])), None)
 
 
 def load_sample(spec: dict) -> tuple[pd.DataFrame, str]:
-    path = SAMPLE_DIR / spec["file"]
-    if not path.exists():
-        raise FileNotFoundError(f"sample_data/{spec['file']} was not found")
-    return parse_bytes(path.read_bytes(), spec["file"]), stem(spec["file"])
+    path = sample_path(spec)
+    if path is None:
+        raise FileNotFoundError(f"The file '{spec['file']}' is not in the sample_data folder ({SAMPLE_DIR}). "
+                                "Copy it there, or upload your own file instead.")
+    return parse_bytes(path.read_bytes(), path.name), stem(spec["file"])
 
 
 def find_column(df: pd.DataFrame, wanted: str | None) -> str | None:
@@ -167,3 +191,33 @@ def find_column(df: pd.DataFrame, wanted: str | None) -> str | None:
         return None
     norm = lambda s: re.sub(r"[\s_]+", "", str(s)).lower()
     return next((c for c in df.columns if norm(c) == norm(wanted)), None)
+
+WORKFLOW = ["Import", "Inspect", "Analyze", "Prepare", "Validate", "Export"]
+_PREP_STEPS = {"Split", "Clean", "Transform", "Encode", "Scale"}
+
+
+def workflow_bar(current: str) -> None:
+    """Shows Import > Inspect > Analyze > Prepare > Validate > Export and what to do next."""
+    ss = st.session_state
+    seen = ss.setdefault("visited", set())
+    seen.add(current)
+    steps = {e.get("step") for e in ss.get("log", [])}
+    done = {
+        "Import": ss.get("df") is not None,
+        "Inspect": ss.get("target") is not None or "Inspect" in seen,
+        "Analyze": "Analyze" in seen,
+        "Prepare": _PREP_STEPS <= steps,
+        "Validate": ss.get("validation_status") in ("passed", "warnings"),
+        "Export": "Export" in steps,
+    }
+    nxt = next((s for s in WORKFLOW if not done[s] and s != "Analyze"), None)
+    chips = ""
+    for s in WORKFLOW:
+        mark = "✓ " if done[s] else ""
+        style = ("font-weight:700;border:1.5px solid currentColor;" if s == current else
+                 "opacity:.9;" if done[s] else "opacity:.5;")
+        chips += (f"<span style='display:inline-block;padding:3px 12px;margin:0 6px 6px 0;border-radius:99px;"
+                  f"border:1px solid color-mix(in srgb,currentColor 25%,transparent);font-size:13px;{style}'>{mark}{s}</span>")
+    hint = f"<div style='font-size:13px;opacity:.65'>Next: <b>{nxt}</b></div>" if nxt else \
+           "<div style='font-size:13px;opacity:.65'>Every stage is done.</div>"
+    st.markdown(f"<div>{chips}{hint}</div>", unsafe_allow_html=True)
