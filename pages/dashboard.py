@@ -1,8 +1,12 @@
+# Copyright (c) 2026 Mahdi Kordian. Licensed under the MIT License; see LICENSE.
 import html
 from datetime import datetime
 import numpy as np
 import pandas as pd
 import streamlit as st
+
+from core import clear_all
+from dataforge import readiness as compute_readiness
 
 PAGES = {
     "dataset": "pages/dataset.py",
@@ -78,6 +82,7 @@ def load_demo():
     })
     df.loc[rng.choice(n, 50, replace=False), "age"] = np.nan
     df = pd.concat([df, df.head(12)], ignore_index=True)
+    clear_all()                       # nothing from a previous dataset may survive
     now = datetime.now().strftime("%H:%M:%S")
     ss = st.session_state
     ss.df, ss.df_name, ss.modified_at = df, "demo.csv", now
@@ -193,9 +198,9 @@ if df is None:
                 "No dataset yet. Add one to see its health, issues and next steps here.</p></div>",
                 unsafe_allow_html=True)
     a, b, _ = st.columns([1, 1, 3])
-    if a.button("Go to Dataset", type="primary", use_container_width=True):
+    if a.button("Go to Dataset", type="primary", width="stretch"):
         go("dataset")
-    if DEMO and b.button("Load demo data", use_container_width=True):
+    if DEMO and b.button("Load demo data", width="stretch"):
         load_demo()
         st.rerun()
     st.stop()
@@ -208,7 +213,8 @@ choice = right.selectbox("Target column", opts, index=opts.index(cur))
 ss.target = None if choice == NONE else choice
 
 h = health(df)
-score, checks = readiness(h)
+res = compute_readiness(df, ss.target, ss.split_done, ss.get("train_df"), ss.get("val_df"), ss.get("test_df"), ss.get("leakage"))
+score, checks = res["score"], res["checks"]
 color = "var(--blue)" if score >= 60 else "var(--amber)"
 label = "Ready for ML" if score >= 90 else "Almost there" if score >= 60 else "Needs work"
 st.markdown(
@@ -223,8 +229,10 @@ st.markdown(
     unsafe_allow_html=True,
 )
 with st.expander("What counts toward the score"):
-    for name, ok in checks.items():
-        st.markdown(f"{'✅' if ok else '⬜'} {name}")
+    st.caption(res["note"])
+    for c_ in checks:
+        st.markdown(f"{'✅' if c_['passed'] else '⬜'} **{c_['name']}** (weight {c_['weight']}): {c_['detail']}"
+                    + ("" if c_["passed"] or not c_["fix"] else f" *{c_['fix']}*"))
 
 section("Data health")
 base = health(ss.snapshots[0]["df"]) if len(ss.snapshots) > 1 else None
@@ -274,14 +282,14 @@ for i, (sev, text, step) in enumerate(issues[:8]):
     a, b = st.columns([6, 1], vertical_alignment="center")
     a.markdown(f'<div class="dfd issue"><span class="dot s{sev}"></span>{text}'
                f'<span class="tag">{step}</span></div>', unsafe_allow_html=True)
-    if b.button("Fix", key=f"fix_{i}", use_container_width=True):
+    if b.button("Fix", key=f"fix_{i}", width="stretch"):
         go("prepare", prepare_focus=step)
 if len(issues) > 8:
     st.caption(f"+ {len(issues) - 8} more issues in Prepare.")
 
 section("Columns")
 st.dataframe(
-    overview(df), hide_index=True, use_container_width=True,
+    overview(df), hide_index=True, width="stretch",
     column_config={
         "missing %": st.column_config.ProgressColumn("missing %", min_value=0, max_value=100, format="%.1f%%"),
         "distribution": st.column_config.BarChartColumn("distribution"),
@@ -314,7 +322,7 @@ with c2:
 section("Recent activity")
 if ss.log:
     recent = pd.DataFrame(ss.log[-5:][::-1])[["time", "step", "detail"]]
-    st.dataframe(recent, hide_index=True, use_container_width=True)
+    st.dataframe(recent, hide_index=True, width="stretch")
 else:
     st.caption("Nothing has happened yet.")
 if st.button("Open full log"):
