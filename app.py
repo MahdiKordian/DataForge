@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Mahdi Kordian. Licensed under the MIT License; see LICENSE.
 import html
 import streamlit as st
 from core import APP_NAME, PAGES, VERSION, clear_all, go, init_state
