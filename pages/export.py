@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Mahdi Kordian. Licensed under the MIT License; see LICENSE.
 import html
 import io
 import json
@@ -157,18 +158,18 @@ else:
     elif view == "Timeline":
         st.markdown(timeline_html(shown), unsafe_allow_html=True)
     else:
-        st.dataframe(pd.DataFrame(shown), hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(shown), hide_index=True, width="stretch")
     st.caption(f"Showing {len(shown)} of {len(log)} entries. Downloads below always include the full log.")
 
     section("Download the log")
     raw = [{k: v for k, v in e.items() if k not in ("row_change", "col_change")} for e in log]
     c1, c2, c3 = st.columns(3)
     c1.download_button("CSV", pd.DataFrame(raw).to_csv(index=False).encode("utf-8-sig"),
-                       f"{safe}_log.csv", "text/csv", use_container_width=True)
+                       f"{safe}_log.csv", "text/csv", width="stretch")
     c2.download_button("JSON", log_json(raw, name, ss.target, shape), f"{safe}_log.json",
-                       "application/json", use_container_width=True)
+                       "application/json", width="stretch")
     c3.download_button("Text report", log_text(raw, name, ss.target, shape), f"{safe}_log.txt",
-                       "text/plain", use_container_width=True)
+                       "text/plain", width="stretch")
 
 section("Download the prepared data")
 st.caption(f"This is the data as it is right now: {shape[0]:,} rows and {shape[1]} columns.")
