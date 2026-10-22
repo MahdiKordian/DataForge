@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Mahdi Kordian. Licensed under the MIT License; see LICENSE.
 import html
 import re
 from datetime import datetime
@@ -5,19 +6,31 @@ from itertools import combinations
 import numpy as np
 import pandas as pd
 import streamlit as st
+
+from dataforge import readiness as compute_readiness
+from dataforge import analysis as AN, reporting as RP, target as TG
+from dataforge.types import infer_types
+from dataforge.security import pii_columns
 import streamlit.components.v1 as components
 
 PAGES = {"dataset": "pages/dataset.py"}
-SECTIONS = ["Summary", "Findings", "Column profile", "Statistics", "Relationships",
-            "Pipeline log", "Before vs after", "Recommendations"]
-PIPELINE = ["Load", "Clean", "Transform", "Encode", "Scale", "Split"]
+SECTIONS = ["Summary", "Key points", "Findings", "Column profile", "Statistics", "Relationships", "Missing data",
+            "Target analysis", "Variable types", "Pipeline configuration", "Pipeline log", "Reproducibility",
+            "Leakage and validation", "Before vs after", "Recommendations"]
+LEVELS = {
+    "Executive summary": ["Summary", "Key points", "Recommendations"],
+    "Analytical": ["Summary", "Findings", "Column profile", "Statistics", "Relationships", "Missing data", "Target analysis", "Recommendations"],
+    "Technical": ["Summary", "Variable types", "Pipeline configuration", "Pipeline log", "Reproducibility", "Leakage and validation", "Before vs after"],
+    "Everything": SECTIONS,
+}
+PIPELINE = ["Load", "Split", "Clean", "Transform", "Encode", "Scale"]
 SEV = {3: "High", 2: "Medium", 1: "Low"}
 ADVICE = {
     "Clean": "Clean: fill or drop missing values, remove duplicate rows and drop constant columns.",
-    "Transform": "Transform: treat outliers, reduce skew and balance the target classes if needed.",
+    "Transform": "Transform: treat outliers and reduce skew. Class balancing is set in Split and only touches the training set.",
     "Encode": "Encode: turn categorical columns into numbers before training.",
     "Scale": "Scale: put numeric columns on a similar range so no column dominates.",
-    "Split": "Split: create the train and test sets last, so no information leaks between them.",
+    "Split": "Split: create the train and test sets first, so every later step learns from the training set only.",
 }
 
 CSS = """
@@ -175,7 +188,8 @@ def build_blocks(df, ss, chosen):
     log = ss.log
     issues = find_issues(df, t)
     if "Summary" in chosen:
-        score, checks = readiness(df, ss.split_done)
+        res = compute_readiness(df, t, ss.split_done, ss.get("train_df"), ss.get("val_df"), ss.get("test_df"), ss.get("leakage"))
+        score, checks = res["score"], res["checks"]
         B += [("h2", "Summary"),
               ("kv", [("Rows", f"{len(df):,}"), ("Columns", df.shape[1]), ("Numeric", len(n)),
                       ("Categorical", len(cats(df))), ("Missing cells", f"{df.isna().mean().mean() * 100:.1f}%"),
@@ -183,7 +197,7 @@ def build_blocks(df, ss, chosen):
                       ("Memory", f"{df.memory_usage(deep=True).sum() / 1024**2:.2f} MB"),
                       ("Target", t or "none"), ("ML readiness", f"{score} / 100")]),
               ("p", f"{len(issues)} issue(s) found. Readiness counts these checks: "
-                    + "; ".join(f"{k.lower()} ({'yes' if v else 'no'})" for k, v in checks.items()) + ".")]
+                    + "; ".join(f"{c_['name'].lower()} ({'yes' if c_['passed'] else 'no'}: {c_['detail']})" for c_ in checks) + ". " + res["note"])]
     if "Findings" in chosen:
         B.append(("h2", "Findings"))
         if issues:
@@ -192,15 +206,18 @@ def build_blocks(df, ss, chosen):
             B.append(("p", "No issues found."))
     if "Column profile" in chosen:
         rows = []
+        hidden = set(pii_columns(df))
         for c in df.columns[:60]:
             s = df[c]
             isn = pd.api.types.is_numeric_dtype(s) and not pd.api.types.is_bool_dtype(s)
             rows.append({"column": c, "type": str(s.dtype), "missing %": s.isna().mean() * 100,
                          "unique": s.nunique(),
-                         "mean / most common": s.mean() if isn else (str(s.mode().iloc[0]) if s.notna().any() else "–")})
+                         "mean / most common": s.mean() if isn else ("[hidden: looks like personal data]" if c in hidden else (str(s.mode().iloc[0]) if s.notna().any() else "–"))})
         B += [("h2", "Column profile"), ("table", pd.DataFrame(rows), "missing %", 100)]
         if df.shape[1] > 60:
             B.append(("note", "Only the first 60 columns are listed."))
+        if hidden:
+            B.append(("note", f"Example values were hidden for {len(hidden)} column(s) that look like personal data: {', '.join(map(str, sorted(hidden, key=str)[:5]))}."))
     if "Statistics" in chosen and n:
         d = df[n[:40]].describe().T[["count", "mean", "std", "min", "50%", "max"]].rename(columns={"50%": "median"})
         B += [("h2", "Statistics"), ("table", d.reset_index().rename(columns={"index": "column"}), None, 1)]
@@ -217,13 +234,77 @@ def build_blocks(df, ss, chosen):
                   ("table", target_strength(df, t), "strength (0 to 1)", 1)]
         if len(n) < 2 and t not in df.columns:
             B.append(("p", "Not enough numeric columns, and no target selected."))
+    if "Key points" in chosen:
+        res_k = compute_readiness(df, t, ss.split_done, ss.get("train_df"), ss.get("val_df"), ss.get("test_df"), ss.get("leakage"))
+        B += [("h2", "Key points"),
+              ("list", RP.key_points(df, t, res_k, ss.get("leakage"), ss.get("validation_status"), ss.split_done, infer_types(df, t)))]
+    adf = df.iloc[:ss.n_train] if ss.get("n_train") and ss.split_done else df
+    if "Missing data" in chosen:
+        B.append(("h2", "Missing data"))
+        ma = AN.missing_analysis(adf)
+        if len(ma["per_column"]):
+            B += [("table", ma["per_column"].head(15), "missing %", 100)]
+            if len(ma["patterns"]):
+                B += [("p", "Most common patterns of missing values:"), ("table", ma["patterns"].head(6), None, 1)]
+            B.append(("p", f"{ma['n_dependent']} relationship(s) suggest that missingness depends on other columns." if ma["n_dependent"]
+                      else "No column was found whose values clearly predict where the gaps are."))
+            B.append(("note", ma["limits"]))
+        else:
+            B.append(("p", "No missing values."))
+    if "Target analysis" in chosen:
+        B.append(("h2", "Target analysis"))
+        if t in df.columns:
+            kind = TG.guess_kind(adf, t)
+            tr = TG.analyze_target(adf, t, kind, types=infer_types(adf, t))
+            B.append(("p", f"Problem type (guessed from the target): {kind}."))
+            B += [("p", "- " + f["message"]) for f in tr["flags"][:6]]
+            if "distribution" in tr:
+                B.append(("table", tr["distribution"], "share %", 100))
+            if len(tr.get("features", [])):
+                cols = [c for c in ["feature", "type", "strength (0-1)", "rows used"] if c in tr["features"]]
+                B += [("p", "Features most associated with the target:"), ("table", tr["features"][cols].head(8), "strength (0-1)", 1)]
+            B.append(("note", tr["note"]))
+        else:
+            B.append(("p", "No target selected."))
+    if "Variable types" in chosen:
+        ty = ss.get("var_types") or {c: v["type"] for c, v in infer_types(df, t).items()}
+        inf = infer_types(df, t)
+        B += [("h2", "Variable types"),
+              ("table", pd.DataFrame([{"column": c, "type": ty.get(c, v["type"]), "confidence": v["confidence"], "why": v["reason"]}
+                                      for c, v in list(inf.items())[:80]]), None, 1),
+              ("note", "Types the user confirmed are used by the pipeline." if ss.get("var_types") else "Types are automatic guesses; none were confirmed.")]
+    if "Pipeline configuration" in chosen:
+        B.append(("h2", "Pipeline configuration"))
+        pt = RP.params_table(ss.get("pipeline"))
+        B += [("table", pt, None, 1)] if len(pt) else [("p", "No pipeline has been fitted yet.")]
+        pl = RP.pipeline_table(ss.get("pipeline"))
+        if len(pl):
+            B += [("p", "What each step changed on the training set:"), ("table", pl, None, 1)]
     if "Pipeline log" in chosen:
         B.append(("h2", "Pipeline log"))
         if log:
             L = pd.DataFrame(log)
-            B.append(("table", L[[c for c in ["time", "step", "detail", "rows", "cols"] if c in L]], None, 1))
+            B.append(("table", L[[c for c in ["run_id", "time", "step", "seconds", "detail", "rows", "cols"] if c in L]], None, 1))
         else:
             B.append(("p", "No steps recorded yet."))
+    if "Reproducibility" in chosen:
+        B.append(("h2", "Reproducibility"))
+        si = ss.get("split_info") or {}
+        env = RP.environment()
+        B.append(("kv", [("Random seed", si.get("seed", "–")), ("Test share", f"{si.get('test_pct', '–')}%"), ("Validation share", f"{si.get('val_pct', 0)}%"),
+                         ("Class balancing", si.get("balance", "None")), ("Python", env["python"]), ("pandas", env["pandas"]),
+                         ("numpy", env["numpy"]), ("scipy", env["scipy"])]))
+        B.append(("p", "With the same data, seed and settings the pipeline gives the same output. Save it on the Pipeline page to reuse it."))
+    if "Leakage and validation" in chosen:
+        B.append(("h2", "Leakage and validation"))
+        lk = ss.get("leakage") or []
+        B.append(("list", [f"{x['level'].upper()}: {x['message']}" for x in lk]) if lk else
+                 ("p", "Leakage guard found nothing." if ss.split_done else "The data has not been split, so leakage was not checked."))
+        vs = ss.get("validation_status")
+        B.append(("p", f"Data contract validation: {vs}." if vs else "No data contract validation has been run."))
+        rd = compute_readiness(df, t, ss.split_done, ss.get("train_df"), ss.get("val_df"), ss.get("test_df"), ss.get("leakage"))
+        B.append(("table", pd.DataFrame([{"check": c_["name"], "passed": "yes" if c_["passed"] else "no", "weight": c_["weight"], "detail": c_["detail"]}
+                                          for c_ in rd["checks"]]), None, 1))
     if "Before vs after" in chosen:
         B.append(("h2", "Before vs after"))
         if ss.snapshots:
@@ -375,7 +456,9 @@ st.markdown('<div class="dfd"><h2>Options</h2></div>', unsafe_allow_html=True)
 a, b = st.columns(2)
 title = a.text_input("Title", value=f"{ss.df_name} data report")
 author = b.text_input("Prepared by (optional)")
-chosen = st.multiselect("Sections", SECTIONS, default=SECTIONS)
+level = st.radio("Report level", list(LEVELS), horizontal=True,
+                 help="Executive: a few quantified points. Analytical: statistics and relationships. Technical: every step, setting and version.")
+chosen = st.multiselect("Sections", SECTIONS, default=LEVELS[level], key=f"sections_{level}")
 theme_choice = st.radio("Report theme", ["Auto", "Light", "Dark"], horizontal=True,
                         help="Auto: the downloaded file follows the reader's device setting, "
                              "and the preview follows this app. Printing is always light.")
@@ -399,9 +482,9 @@ safe = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in str(ss.df_nam
 st.markdown('<div class="dfd"><h2>Download</h2></div>', unsafe_allow_html=True)
 c1, c2, _ = st.columns([1, 1, 2])
 c1.download_button("HTML report", html_doc, f"{safe}_report.html", "text/html", type="primary",
-                   use_container_width=True, on_click=note_report, args=("HTML",))
+                   width="stretch", on_click=note_report, args=("HTML",))
 c2.download_button("Markdown", md_doc, f"{safe}_report.md", "text/markdown",
-                   use_container_width=True, on_click=note_report, args=("Markdown",))
+                   width="stretch", on_click=note_report, args=("Markdown",))
 st.caption("To get a PDF, open the HTML file in your browser and choose Print, then Save as PDF. "
            "Downloading adds a Report entry to the log.")
 
