@@ -19,6 +19,7 @@ NAV = [
     ("landing", "Home", ":material/home:"),
     ("dataset", "Dataset", ":material/dataset:"),
     ("dashboard", "Dashboard", ":material/dashboard:"),
+    ("types", "Variable types", ":material/category:"),
     ("prepare", "Prepare", ":material/tune:"),
     ("analysis", "Analysis", ":material/analytics:"),
     ("export", "Export", ":material/file_download:"),
