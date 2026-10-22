@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Mahdi Kordian. Licensed under the MIT License; see LICENSE.
 import html
 from itertools import combinations
 import altair as alt
@@ -38,7 +39,7 @@ def section(t):
 
 
 def show(chart):
-    st.altair_chart(chart, use_container_width=True)
+    st.altair_chart(chart, width="stretch")
 
 
 def nums(df):
@@ -182,12 +183,12 @@ def view_overview(df):
 
     if n:
         section("Numeric summary")
-        st.dataframe(df[n].describe().T, use_container_width=True)
+        st.dataframe(df[n].describe().T, width="stretch")
     if c:
         section("Categorical summary")
         d = df[c].describe().T
         d["top"] = d["top"].astype(str)
-        st.dataframe(d, use_container_width=True)
+        st.dataframe(d, width="stretch")
 
 
 def view_distribution(df):
@@ -249,12 +250,12 @@ def view_corr(df):
         st.success(f"No pair above {thr}.")
     else:
         st.warning(f"{len(flagged)} pair(s) above {thr}. Consider dropping one column from each.")
-    st.dataframe(p.head(15), hide_index=True, use_container_width=True,
+    st.dataframe(p.head(15), hide_index=True, width="stretch",
                  column_config={"correlation": st.column_config.NumberColumn(format="%.3f")})
     v = vif(df, n)
     if v is not None:
         section("Multicollinearity (VIF)")
-        st.dataframe(v.to_frame(), use_container_width=True)
+        st.dataframe(v.to_frame(), width="stretch")
         st.caption("Above 5 is moderate and above 10 is high. Based on rows without missing values.")
 
 
@@ -278,7 +279,7 @@ def view_outliers(df):
     if t.empty:
         return
     show(bars(t.set_index("column")["outliers %"], "outliers %"))
-    st.dataframe(t, hide_index=True, use_container_width=True, column_config={
+    st.dataframe(t, hide_index=True, width="stretch", column_config={
         "outliers %": st.column_config.ProgressColumn(min_value=0, max_value=100, format="%.1f%%")})
 
 
@@ -292,7 +293,7 @@ def view_categorical(df):
                           "top %": df[x].value_counts(normalize=True).max() * 100 if df[x].notna().any() else 0,
                           "rare categories (<1%)": int((df[x].value_counts(normalize=True) < 0.01).sum())}
                          for x in c])
-    st.dataframe(info, hide_index=True, use_container_width=True,
+    st.dataframe(info, hide_index=True, width="stretch",
                  column_config={"top %": st.column_config.ProgressColumn(min_value=0, max_value=100, format="%.0f%%")})
     col = st.selectbox("Column", c)
     show(bars(df[col].value_counts().head(20), "count"))
@@ -386,7 +387,7 @@ def view_pca(df):
     show(alt.Chart(sample(d)).mark_circle(opacity=0.55, size=40).encode(*enc))
     st.caption("Loadings: how much each column contributes to PC1 and PC2.")
     load = pd.DataFrame(Vt[:2].T, index=n, columns=["PC1", "PC2"])
-    st.dataframe(load.reindex(load.PC1.abs().sort_values(ascending=False).index).head(10), use_container_width=True)
+    st.dataframe(load.reindex(load.PC1.abs().sort_values(ascending=False).index).head(10), width="stretch")
 
 
 def view_compare(df):
@@ -404,7 +405,7 @@ def view_compare(df):
 
     t = pd.DataFrame({"before": facts(base), "after": facts(df)})
     t["change"] = t["after"] - t["before"]
-    st.dataframe(t, use_container_width=True)
+    st.dataframe(t, width="stretch")
     added, removed = [c for c in df.columns if c not in base.columns], [c for c in base.columns if c not in df.columns]
     if added:
         st.markdown("**Added columns:** " + ", ".join(f"`{c}`" for c in added))
@@ -417,10 +418,10 @@ def view_compare(df):
             "mean before": base[common].mean(), "mean after": df[common].mean(),
             "std before": base[common].std(), "std after": df[common].std(),
             "missing before": base[common].isna().sum(), "missing after": df[common].isna().sum()}),
-            use_container_width=True)
+            width="stretch")
     if st.session_state.log:
         section("Steps so far")
-        st.dataframe(pd.DataFrame(st.session_state.log)[["time", "step", "detail"]], hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(st.session_state.log)[["time", "step", "detail"]], hide_index=True, width="stretch")
 
 
 VIEWS = {"Overview": view_overview, "Distributions": view_distribution, "Missing": view_missing,
