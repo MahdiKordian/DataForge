@@ -23,6 +23,7 @@ PAGES = {
     "analysis": "pages/analysis.py",
     "export": "pages/export.py",
     "report": "pages/report.py",
+    "advisor": "pages/advisor.py",
     "types": "pages/types.py",
     "about": "pages/about.py",
 }
