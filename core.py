@@ -25,6 +25,7 @@ PAGES = {
     "report": "pages/report.py",
     "advisor": "pages/advisor.py",
     "types": "pages/types.py",
+    "insights": "pages/insights.py",
     "about": "pages/about.py",
 }
 

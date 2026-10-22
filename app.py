@@ -21,6 +21,7 @@ NAV = [
     ("dashboard", "Dashboard", ":material/dashboard:"),
     ("types", "Variable types", ":material/category:"),
     ("advisor", "Advisor", ":material/lightbulb:"),
+    ("insights", "Insights", ":material/query_stats:"),
     ("prepare", "Prepare", ":material/tune:"),
     ("analysis", "Analysis", ":material/analytics:"),
     ("export", "Export", ":material/file_download:"),
