@@ -23,6 +23,7 @@ NAV = [
     ("advisor", "Advisor", ":material/lightbulb:"),
     ("insights", "Insights", ":material/query_stats:"),
     ("prepare", "Prepare", ":material/tune:"),
+    ("lab", "Lab", ":material/science:"),
     ("analysis", "Analysis", ":material/analytics:"),
     ("export", "Export", ":material/file_download:"),
     ("report", "Report", ":material/summarize:"),
