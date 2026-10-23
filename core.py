@@ -29,6 +29,7 @@ PAGES = {
     "insights": "pages/insights.py",
     "compare": "pages/compare.py",
     "contract": "pages/contract.py",
+    "pipeline": "pages/pipeline.py",
     "about": "pages/about.py",
 }
 

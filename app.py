@@ -27,6 +27,7 @@ NAV = [
     ("analysis", "Analysis", ":material/analytics:"),
     ("compare", "Compare", ":material/difference:"),
     ("contract", "Contract", ":material/rule:"),
+    ("pipeline", "Pipeline", ":material/account_tree:"),
     ("export", "Export", ":material/file_download:"),
     ("report", "Report", ":material/summarize:"),
     ("about", "About", ":material/auto_awesome:"),
