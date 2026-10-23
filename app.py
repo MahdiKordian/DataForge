@@ -25,6 +25,7 @@ NAV = [
     ("prepare", "Prepare", ":material/tune:"),
     ("lab", "Lab", ":material/science:"),
     ("analysis", "Analysis", ":material/analytics:"),
+    ("compare", "Compare", ":material/difference:"),
     ("export", "Export", ":material/file_download:"),
     ("report", "Report", ":material/summarize:"),
     ("about", "About", ":material/auto_awesome:"),
