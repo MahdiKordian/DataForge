@@ -26,6 +26,7 @@ PAGES = {
     "advisor": "pages/advisor.py",
     "types": "pages/types.py",
     "lab": "pages/lab.py",
+    "projects": "pages/projects.py",
     "insights": "pages/insights.py",
     "compare": "pages/compare.py",
     "contract": "pages/contract.py",
