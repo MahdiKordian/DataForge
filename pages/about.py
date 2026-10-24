@@ -1,4 +1,7 @@
+# Copyright (c) 2026 Mahdi Kordian. Licensed under the MIT License; see LICENSE.
 import streamlit as st
+
+from core import VERSION, WORKFLOW
 
 HEADER = ("name", "age", "city")
 
@@ -15,22 +18,26 @@ CLEAN = [
     [("Nima", ""), ("29", ""), ("Tabriz", "")],
 ]
 
-STEPS = [
-    ("Clean", "Fix missing values, duplicates and messy text."),
-    ("Transform", "Encode, scale and reshape columns."),
-    ("Analyze", "See distributions, correlations and outliers."),
-    ("Train", "Export a dataset your model can use."),
-]
+STEP_TEXT = {
+    "Import": "Upload, paste or link a file. Files are checked first.",
+    "Inspect": "Confirm variable types and read the Advisor's findings.",
+    "Analyze": "Distributions, relationships, missing data and the target.",
+    "Prepare": "Split first, then clean, transform, encode and scale.",
+    "Validate": "Check the data against a contract and for leakage.",
+    "Export": "Download the data, the pipeline file and a Python script.",
+}
+STEPS = [(name, STEP_TEXT[name]) for name in WORKFLOW]
 
 FEATURES = [
-    ("Data cleaning", "Handle missing values, duplicates and inconsistent entries without writing a line of pandas."),
-    ("Data transformation", "Turn raw columns into a cleaner, more useful format in a few clicks."),
-    ("Data analysis", "Explore your dataset and spot patterns, trends and problems early."),
-    ("ML-ready output", "Get a structured, clean dataset that goes straight into your training workflow."),
-    ("Fast workflow", "Skip the repetitive notebook code and spend your time on the model."),
-    ("Simple interface", "One clean screen per task, so data preparation never feels like a project of its own."),
+    ("No leakage by design", "The data is split first. Every step learns only from the training set and is then applied to validation and test."),
+    ("Advisor, not autopilot", "It finds problems and lays out options with pros and cons. You decide, and each decision is recorded."),
+    ("Variable types", "Zip codes, ids and ordinal scales are not treated as plain numbers. DataForge guesses, shows how sure it is, and you confirm."),
+    ("Analysis that fits the task", "Classification, regression, time series or unsupervised: relationships, missing-data patterns, drift and class balance."),
+    ("Data contract", "Write down what a valid file looks like and check every new file against it before it reaches your pipeline."),
+    ("Reproducible output", "Save the fitted pipeline as one JSON file, re-run it on new data, or export it as a Python script."),
+    ("Preparation lab", "Compare several preparation choices with cross-validation on the training set. The test set is never touched."),
+    ("Local and careful", "Upload and link checks, personal-data warnings, projects saved on your own computer, and sampling for large files."),
 ]
-
 
 
 def table_html(rows, title, caption, kind):
@@ -95,14 +102,6 @@ CSS = """
 }
 .df-brand {
     font-weight: 600;
-    font-size: 15px;
-    margin-bottom: 26px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-.df-brand {
-    font-weight: 600;
     font-size: 18px;
     line-height: 1;
     margin-bottom: 26px;
@@ -159,7 +158,7 @@ CSS = """
 .df h2 { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 22px; }
 .df-steps {
     list-style: none; margin: 0 0 72px; padding: 0;
-    display: grid; grid-template-columns: repeat(4, 1fr);
+    display: grid; grid-template-columns: repeat(6, 1fr);
     border-top: 1px solid var(--line);
 }
 .df-steps li { padding: 18px 18px 0 0; position: relative; }
@@ -169,7 +168,7 @@ CSS = """
 }
 .df-steps .n { font-family: 'IBM Plex Mono', monospace; font-size: 12px; opacity: 0.5; display: block; margin-bottom: 4px; }
 .df-steps b { font-size: 18px; }
-.df-steps p { margin-top: 4px; font-size: 14px; opacity: 0.7; max-width: 24ch; }
+.df-steps p { margin-top: 4px; font-size: 13px; opacity: 0.7; max-width: 20ch; }
 
 /* ---------- Features ---------- */
 .df-feats { margin-bottom: 72px; border-top: 1px solid var(--line); }
@@ -200,6 +199,7 @@ CSS = """
     .df-stage { grid-template-columns: 1fr; }
     .df-arrow { transform: rotate(90deg); }
     .df-steps { grid-template-columns: 1fr 1fr; row-gap: 28px; }
+    .df-steps p { max-width: none; }
     .df-feat { grid-template-columns: 1fr; gap: 6px; }
     .df-creator { grid-template-columns: 1fr; padding: 24px; }
 }
@@ -217,13 +217,13 @@ PAGE = (
     '<section class="df-hero">'
     '<div class="df-brand"><span>🔥</span>DataForge</div>'
     "<h1>Raw data in. Model-ready data out.</h1>"
-    "<p>DataForge cleans, transforms and explores your dataset in one place, "
+    "<p>DataForge inspects, prepares and validates your dataset in one place, without leaking test data into training, "
     "so you can spend your time on the model instead of the spreadsheet.</p>"
     "</section>"
     '<section class="df-stage">'
     + table_html(DIRTY, "Before", "Duplicate row, missing age, inconsistent text.", "before")
     + '<div class="df-arrow">&rarr;</div>'
-    + table_html(CLEAN, "After", "Duplicate removed, age filled with the median, text standardized.", "after")
+    + table_html(CLEAN, "After", "Duplicate removed, age filled with the median, text standardized (Text case: Title Case).", "after")
     + "</section>"
     "<h2>How it works</h2>"
     f'<ol class="df-steps">{steps_html}</ol>'
@@ -238,9 +238,10 @@ PAGE = (
     "DataForge is one of my projects, made to keep data preparation and exploration simple.</p>"
     "</div>"
     '<div class="df-meta">'
-    "<div><span>version</span><span>v1.0.0</span></div>"
+    f"<div><span>version</span><span>{VERSION}</span></div>"
+    "<div><span>license</span><span>MIT License</span></div>"
     "<div><span>built with</span><span>Python, Streamlit</span></div>"
-    "<div><span>project</span><span>DataForge</span></div>"
+    "<div><span>feedback</span><span>GitHub Issues</span></div>"
     "</div>"
     "</section>"
     '<div class="df-foot">Better data, brighter insights.</div>'
