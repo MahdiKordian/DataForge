@@ -30,6 +30,7 @@ NAV = [
     ("pipeline", "Pipeline", ":material/account_tree:"),
     ("export", "Export", ":material/file_download:"),
     ("projects", "Projects", ":material/folder:"),
+    ("performance", "Performance", ":material/speed:"),
     ("report", "Report", ":material/summarize:"),
     ("about", "About", ":material/auto_awesome:"),
 ]
