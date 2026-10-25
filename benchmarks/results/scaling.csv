@@ -1,0 +1,10 @@
+task,time ~ rows^,seconds at largest
+split,1.13,0.6753054179999936
+pipeline fit+transform,0.98,12.458231959000045
+quality checks,0.9,6.959338021000008
+compare two versions,0.78,4.476194529000054
+profile categorical,0.68,0.527006947000018
+correlations,0.67,0.5348855729999968
+profile numeric,0.67,1.1815630419999934
+missing analysis,0.23,1.5544405040000129
+mixed associations,0.14,1.2835353140000052
