@@ -1,0 +1,11 @@
+rows,columns,tool,seconds,peak_mb_above_start
+5000,20,"DataForge (profile, quality, relationships, missing data)",1.0961232060000017,5.0625
+5000,20,ydata-profiling (minimal=True),5.680462399999996,81.79296875
+5000,20,Sweetviz (with target),10.654076415000006,159.7109375
+5000,20,ydata-profiling (default),21.85152881900001,283.87890625
+20000,20,"DataForge (profile, quality, relationships, missing data)",2.062781942000001,2.1484375
+20000,20,ydata-profiling (minimal=True),5.129042581000007,94.125
+20000,20,Sweetviz (with target),11.363339514999993,165.5625
+20000,20,ydata-profiling (default),21.317769950000013,305.30078125
+100000,20,"DataForge (profile, quality, relationships, missing data)",3.721094497000024,0.0
+100000,20,ydata-profiling (minimal=True),6.220374646000039,170.33984375
