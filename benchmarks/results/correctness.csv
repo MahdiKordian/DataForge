@@ -1,0 +1,16 @@
+check,expected,measured,pass
+"mean of N(5,2)",5.00 +/- 0.02,5.000,True
+"std of N(5,2)",2.00 +/- 0.02,2.002,True
+skew of a normal,0 +/- 0.03,-0.004,True
+"Cramer's V, identical categories",close to 1,1.000,True
+"Cramer's V, independent categories",close to 0,0.028,True
+Pearson blind to a parabola,|r| < 0.1,0.003,True
+NMI sees the parabola,NMI > 0.3,0.645,True
+split sizes add up,5000,5000,True
+class share kept by the split (stratified),difference < 1 pt,0.06 pt,True
+imputer uses the TRAINING median,76.3417,76.3417,True
+transform leaves its input unchanged,identical,identical,True
+"train, validation and test have the same columns",True,True,True
+same data and seed give identical output,True,True,True
+scaled training column has mean about 0,|mean| < 0.05,-0.0000,True
+no NaN left after preparation,0,0,True
