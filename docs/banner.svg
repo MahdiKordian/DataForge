@@ -18,25 +18,25 @@
 <text x="232" y="196" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="27" fill="#9aa4b5">Raw data in. Model-ready data out.</text>
 <rect x="232" y="236" width="142" height="40" rx="20" fill="#3b6cff" fill-opacity=".16" stroke="#3b6cff" stroke-opacity=".7"/>
 <circle cx="256" cy="256" r="5" fill="#3b6cff"/>
-<text x="272" y="262" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="17" font-weight="600" fill="#e6e9ef">Load</text>
+<text x="272" y="262" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="17" font-weight="600" fill="#e6e9ef">Import</text>
 <path d="M376 256 h10" stroke="#4b5568" stroke-width="2" stroke-linecap="round"/>
 <rect x="388" y="236" width="142" height="40" rx="20" fill="#e8960c" fill-opacity=".16" stroke="#e8960c" stroke-opacity=".7"/>
 <circle cx="412" cy="256" r="5" fill="#e8960c"/>
-<text x="428" y="262" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="17" font-weight="600" fill="#e6e9ef">Clean</text>
+<text x="428" y="262" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="17" font-weight="600" fill="#e6e9ef">Inspect</text>
 <path d="M532 256 h10" stroke="#4b5568" stroke-width="2" stroke-linecap="round"/>
 <rect x="544" y="236" width="142" height="40" rx="20" fill="#14b8a6" fill-opacity=".16" stroke="#14b8a6" stroke-opacity=".7"/>
 <circle cx="568" cy="256" r="5" fill="#14b8a6"/>
-<text x="584" y="262" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="17" font-weight="600" fill="#e6e9ef">Transform</text>
+<text x="584" y="262" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="17" font-weight="600" fill="#e6e9ef">Analyze</text>
 <path d="M688 256 h10" stroke="#4b5568" stroke-width="2" stroke-linecap="round"/>
 <rect x="700" y="236" width="142" height="40" rx="20" fill="#8b5cf6" fill-opacity=".16" stroke="#8b5cf6" stroke-opacity=".7"/>
 <circle cx="724" cy="256" r="5" fill="#8b5cf6"/>
-<text x="740" y="262" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="17" font-weight="600" fill="#e6e9ef">Encode</text>
+<text x="740" y="262" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="17" font-weight="600" fill="#e6e9ef">Prepare</text>
 <path d="M844 256 h10" stroke="#4b5568" stroke-width="2" stroke-linecap="round"/>
 <rect x="856" y="236" width="142" height="40" rx="20" fill="#ec4899" fill-opacity=".16" stroke="#ec4899" stroke-opacity=".7"/>
 <circle cx="880" cy="256" r="5" fill="#ec4899"/>
-<text x="896" y="262" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="17" font-weight="600" fill="#e6e9ef">Scale</text>
+<text x="896" y="262" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="17" font-weight="600" fill="#e6e9ef">Validate</text>
 <path d="M1000 256 h10" stroke="#4b5568" stroke-width="2" stroke-linecap="round"/>
 <rect x="1012" y="236" width="142" height="40" rx="20" fill="#22c55e" fill-opacity=".16" stroke="#22c55e" stroke-opacity=".7"/>
 <circle cx="1036" cy="256" r="5" fill="#22c55e"/>
-<text x="1052" y="262" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="17" font-weight="600" fill="#e6e9ef">Split</text>
+<text x="1052" y="262" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="17" font-weight="600" fill="#e6e9ef">Export</text>
 </svg>
