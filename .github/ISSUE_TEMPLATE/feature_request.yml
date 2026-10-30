@@ -1,0 +1,32 @@
+name: Feature request
+description: Suggest an improvement
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Suggestions are welcome. Describe the need first, so we can agree whether it fits. If you would like to write the change yourself, see CONTRIBUTING.md and send a pull request afterwards.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The problem or the goal, in your own words.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help?
+      description: How you imagine it working. Alternatives you tried are welcome too.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where in the app?
+      options:
+        - Import
+        - Inspect (Dashboard, Variable types, Advisor)
+        - Analyze (Insights, Analysis, Compare)
+        - Prepare and Lab
+        - Validate (Contract)
+        - Export (Export, Pipeline, Report, Projects)
+        - Something else
