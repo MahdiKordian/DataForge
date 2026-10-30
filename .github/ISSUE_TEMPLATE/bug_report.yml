@@ -1,0 +1,47 @@
+name: Bug report
+description: Something does not work as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to report this.
+        **Do not post personal, confidential or secret data** in this issue. If your data is sensitive, describe its shape (column types, number of rows) or use a small made-up example.
+  - type: input
+    id: version
+    attributes:
+      label: DataForge version
+      description: Shown in the sidebar of the app, for example v2.0.0
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where do you run it?
+      options:
+        - Hosted demo (dataforge-tool.streamlit.app)
+        - On my computer
+        - On a server
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Which page and step, what you did, what you expected and what you got. Paste the full error message if there is one.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Load the sample "Telco Customer Churn"
+        2. Prepare > Split ...
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Python, pandas and Streamlit versions
+      description: If you run it yourself. Run `pip list` to see them.
