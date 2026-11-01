@@ -279,7 +279,7 @@ The full list, including what is not protected, is in [docs/SECURITY.md](docs/SE
 The project has more than 100 automated tests. They cover the transformers, splitting, leakage, saved pipelines, the data contract, security checks, projects, the three sample datasets, and the consistency of the release files.
 
 ```bash
-pip install pytest
+python -m pip install -r requirements.txt -r requirements-dev.txt
 python -m pytest
 ```
 
@@ -326,6 +326,7 @@ DataForge/
 ├── sample_data/        Ames Housing, Telco Customer Churn, Palmer Penguins
 ├── docs/               Guides and README images
 ├── requirements.txt    Python dependencies
+├── requirements-dev.txt    Development and benchmark dependencies
 ├── README.md           This file
 ├── CHANGELOG.md        What changed in each version
 ├── LICENSE             MIT License

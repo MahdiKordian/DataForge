@@ -19,7 +19,7 @@ Thank you for wanting to improve DataForge. Pull requests are welcome.
 2. Make the change. Keep it small and focused: one fix or one feature per pull request.
 3. Add or update tests in `tests/`, and run them:
    ```
-   pip install -r requirements.txt pytest
+   python -m pip install -r requirements.txt -r requirements-dev.txt
    python -m pytest -q
    ```
 4. Keep the style of the surrounding code. New Python files start with the copyright line used in the other files.
