@@ -344,7 +344,8 @@ DataForge/
 | [SciPy](https://scipy.org) | Statistics behind correlations and tests |
 | [scikit-learn](https://scikit-learn.org) | Models for the Lab |
 | [Altair](https://altair-viz.github.io) | Interactive charts |
-| [openpyxl](https://openpyxl.readthedocs.io) | Reading and writing Excel files |
+| [openpyxl](https://openpyxl.readthedocs.io) | Reading and writing `.xlsx` files |
+| [xlrd](https://xlrd.readthedocs.io) | Reading legacy `.xls` files |
 | [PyArrow](https://arrow.apache.org) | Reading and writing Parquet files |
 | [Requests](https://requests.readthedocs.io) | Safe download from a link |
 | [Polars](https://pola.rs) and [DuckDB](https://duckdb.org) | Optional, for files that do not fit in memory |

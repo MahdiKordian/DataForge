@@ -17,8 +17,14 @@ license, and its copyright belongs to its authors.
 - scikit-learn (BSD 3-Clause) - https://scikit-learn.org
 - Altair (BSD 3-Clause) - https://altair-viz.github.io
 - openpyxl (MIT) - https://openpyxl.readthedocs.io
+- xlrd (BSD-style; see upstream LICENSE for incorporated-code notices) - https://github.com/python-excel/xlrd/blob/master/LICENSE
 - PyArrow (Apache License 2.0) - https://arrow.apache.org
 - Requests (Apache License 2.0) - https://requests.readthedocs.io
+
+Development and benchmark dependencies:
+
+- pytest (MIT) - https://github.com/pytest-dev/pytest
+- tabulate (MIT) - https://github.com/astanin/python-tabulate
 
 Optional, used only if you install them:
 
