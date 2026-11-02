@@ -38,10 +38,20 @@ def test_no_trace_of_the_old_license_terms():
 
 def test_every_required_library_is_in_the_notice():
     notice = _text("NOTICE").lower()
-    for line in _text("requirements.txt").splitlines():
-        m = re.match(r"([A-Za-z0-9_.-]+)", line)
-        if m and not line.startswith("#"):
-            assert m.group(1).lower() in notice, m.group(1)
+
+    for filename in ("requirements.txt", "requirements-dev.txt"):
+        for line in _text(filename).splitlines():
+            line = line.strip()
+
+            if not line or line.startswith("#"):
+                continue
+
+            m = re.match(r"([A-Za-z0-9_.-]+)", line)
+
+            if m:
+                assert m.group(1).lower() in notice, (
+                    f"{m.group(1)} is missing from NOTICE"
+                )
 
 
 def test_sample_files_named_in_core_exist():
