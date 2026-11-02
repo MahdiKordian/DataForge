@@ -3,6 +3,32 @@
 All notable changes to DataForge are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## [2.0.1] - 2026-11-11
+
+A maintenance release focused on reliability, data integrity, usability, and development workflow.
+
+### Added
+
+- Full dataset content fingerprints for verifying stored project data.
+- Recovery and rollback support for interrupted project saves.
+- Support for legacy Excel `.xls` files through xlrd.
+- Centralized dataset parsing for uploaded files, pasted data, samples, and URLs.
+- Separate development dependencies through `requirements-dev.txt`.
+
+### Changed
+
+- Improved the global workflow progress indicator and page layout consistency.
+- Updated benchmark generation to use consistent LF line endings.
+- Improved missing-value handling across training, validation, test, and new data.
+
+### Fixed
+
+- Corrected the Dashboard pipeline step order.
+- Fixed missing-value handling so the Drop rows strategy removes rows only during training.
+- Prevented missing values from being passed to Lab models during evaluation when Drop rows is selected.
+- Improved project integrity verification and recovery after interrupted saves.
+- Removed Pandas downcasting FutureWarnings in outlier clipping.
+
 ## [2.0.0] - 2026-10-31
 
 A new major version. DataForge is now built around one rule: **learn from the training data only**. The workflow and the core changed, so this is a breaking release.
@@ -56,5 +82,6 @@ First public release, under the Apache License 2.0. Loading, a health dashboard,
 
 Copies of version 1.0.0 that were already published stay under the Apache License 2.0. The MIT License applies from version 2.0.0.
 
+[2.0.1]: https://github.com/MahdiKordian/DataForge/releases/tag/v2.0.1
 [2.0.0]: https://github.com/MahdiKordian/DataForge/releases/tag/v2.0.0
 [1.0.0]: https://github.com/MahdiKordian/DataForge/releases/tag/v1.0.0

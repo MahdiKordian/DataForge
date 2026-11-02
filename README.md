@@ -15,7 +15,7 @@ Inspect it, decide what to fix, apply the fixes, and take away a clean dataset, 
 
 <br><br>
 
-[![Version](https://img.shields.io/badge/version-v2.0.0-2ea44f)](https://github.com/MahdiKordian/DataForge)
+[![Version](https://img.shields.io/badge/version-v2.0.1-2ea44f)](https://github.com/MahdiKordian/DataForge)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Tests](https://github.com/MahdiKordian/DataForge/actions/workflows/tests.yml/badge.svg)](https://github.com/MahdiKordian/DataForge/actions/workflows/tests.yml)
 [![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org)
