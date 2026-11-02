@@ -268,7 +268,7 @@ DataForge is meant to run on your own computer or in a private deployment.
 - **Uploads** are limited to known types, checked against their content, size-limited and screened for zip bombs.
 - **Links** accept only `http` and `https`, standard ports, and addresses that are public. Loopback, private, link-local, shared (100.64.0.0/10) and cloud-metadata addresses are refused, and every redirect is checked again.
 - **No code from files.** No pickle, JSON pipelines only, and the generated script contains only your settings as literals.
-- **Projects** use safe names and stay inside the project folder. Writes are atomic and stored data is checked against a fingerprint on opening.
+- **Projects** use safe names and stay inside the project folder. Writes are staged in a sibling directory; existing projects are backed up and can be restored if replacement is interrupted. Stored data is checked against a fingerprint on opening.
 - **Your data stays in your session** unless you save a project, which writes to a folder on your own computer. Loading from a link makes a network request from the machine that runs DataForge.
 - **Not covered:** there is no login and no per-user separation, so anyone who can open the app can open every saved project. The personal-data scan is a hint, not a guarantee. Put authentication in front of the app before exposing it to the internet.
 
