@@ -127,45 +127,106 @@ def tidy(df: pd.DataFrame) -> pd.DataFrame:
     df.columns = cols
     return df
 
+def _read_csv(
+    raw: bytes,
+    sep: str | None,
+    encoding: str | None = None,
+    header: int | None = 0,
+) -> pd.DataFrame:
+    encodings = (encoding,) if encoding else ENCODINGS
+    err = None
 
-def _read_csv(raw: bytes, sep: str | None) -> pd.DataFrame:
-    err: Exception | None = None
-    for enc in ENCODINGS:
+    for enc in encodings:
         try:
-            return pd.read_csv(io.BytesIO(raw), sep=sep, encoding=enc,
-                               engine="python" if sep is None else "c")
+            return pd.read_csv(
+                io.BytesIO(raw),
+                sep=sep,
+                encoding=enc,
+                engine="python" if sep is None else "c",
+                header=header,
+            )
         except UnicodeDecodeError as e:
             err = e
-    raise err
+
+    if err is not None:
+        raise err
+
+    raise ValueError("Could not decode CSV file.")
+
+
+@st.cache_data(show_spinner=False, max_entries=8)
+def parse_data_bytes(
+    raw: bytes,
+    kind: str,
+    sep: str | None = None,
+    enc: str | None = None,
+    header: bool = True,
+    sheet: str | int | None = None,
+    auto_detect_single_column: bool = False,
+) -> pd.DataFrame:
+    """Shared parser for uploaded, URL-based and other raw dataset inputs."""
+    header_row = 0 if header else None
+
+    if kind == "csv":
+        df = _read_csv(raw, sep, enc, header_row)
+
+        if auto_detect_single_column and sep == "," and df.shape[1] == 1:
+            try:
+                guessed = _read_csv(raw, None, enc, header_row)
+                if guessed.shape[1] > 1:
+                    df = guessed
+            except Exception:
+                pass
+
+    elif kind == "table":
+        df = _read_csv(raw, sep, enc, header_row)
+
+    elif kind == "excel":
+        df = pd.read_excel(
+            io.BytesIO(raw),
+            sheet_name=0 if sheet is None else sheet,
+            header=header_row,
+        )
+
+    elif kind == "json":
+        df = pd.read_json(io.BytesIO(raw))
+
+    elif kind == "parquet":
+        df = pd.read_parquet(io.BytesIO(raw))
+
+    else:
+        raise ValueError(f"Unsupported data kind: {kind}")
+
+    if df.empty or df.shape[1] == 0:
+        raise ValueError("The file has no rows or no columns.")
+
+    return tidy(df)
+
+
+@st.cache_data(show_spinner=False, max_entries=8)
+def excel_sheet_names(raw: bytes) -> list[str]:
+    """Return sheet names from an Excel workbook."""
+    return pd.ExcelFile(io.BytesIO(raw)).sheet_names
 
 
 @st.cache_data(show_spinner=False, max_entries=8)
 def parse_bytes(raw: bytes, filename: str) -> pd.DataFrame:
+    """Read a dataset using its filename extension."""
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "csv"
     kind = KINDS.get(ext)
-    if kind is None:
-        raise ValueError(f"unsupported file type .{ext}")
-    if kind == "csv":
-        df = _read_csv(raw, ",")
-        if df.shape[1] == 1:
-            try:
-                guess = _read_csv(raw, None)
-                if guess.shape[1] > 1:
-                    df = guess
-            except Exception:
-                pass
-    elif kind == "table":
-        df = _read_csv(raw, None)
-    elif kind == "excel":
-        df = pd.read_excel(io.BytesIO(raw))
-    elif kind == "json":
-        df = pd.read_json(io.BytesIO(raw))
-    else:
-        df = pd.read_parquet(io.BytesIO(raw))
-    if df.empty or df.shape[1] == 0:
-        raise ValueError("the file has no rows or no columns")
-    return tidy(df)
 
+    if kind is None:
+        raise ValueError(f"Unsupported file type .{ext}")
+
+    return parse_data_bytes(
+        raw,
+        kind,
+        sep="," if kind == "csv" else None,
+        enc=None,
+        header=True,
+        sheet=0,
+        auto_detect_single_column=(kind == "csv"),
+    )
 
 def read_upload(f) -> tuple[pd.DataFrame, str]:
     """f is a Streamlit UploadedFile. Returns (dataframe, dataset name)."""
