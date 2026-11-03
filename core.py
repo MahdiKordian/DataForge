@@ -266,12 +266,15 @@ WORKFLOW = ["Import", "Inspect", "Analyze", "Prepare", "Validate", "Export"]
 _PREP_STEPS = {"Split", "Clean", "Transform", "Encode", "Scale"}
 
 
+
 def workflow_bar(current: str) -> None:
-    """Shows Import > Inspect > Analyze > Prepare > Validate > Export and what to do next."""
+    """Render the global workflow as a horizontal timeline."""
     ss = st.session_state
     seen = ss.setdefault("visited", set())
     seen.add(current)
+
     steps = {e.get("step") for e in ss.get("log", [])}
+
     done = {
         "Import": ss.get("df") is not None,
         "Inspect": ss.get("target") is not None or "Inspect" in seen,
@@ -280,14 +283,104 @@ def workflow_bar(current: str) -> None:
         "Validate": ss.get("validation_status") in ("passed", "warnings"),
         "Export": "Export" in steps,
     }
-    nxt = next((s for s in WORKFLOW if not done[s] and s != "Analyze"), None)
-    chips = ""
-    for s in WORKFLOW:
-        mark = "✓ " if done[s] else ""
-        style = ("font-weight:700;border:1.5px solid currentColor;" if s == current else
-                 "opacity:.9;" if done[s] else "opacity:.5;")
-        chips += (f"<span style='display:inline-block;padding:3px 12px;margin:0 6px 6px 0;border-radius:99px;"
-                  f"border:1px solid color-mix(in srgb,currentColor 25%,transparent);font-size:13px;{style}'>{mark}{s}</span>")
-    hint = f"<div style='font-size:13px;opacity:.65'>Next: <b>{nxt}</b></div>" if nxt else \
-           "<div style='font-size:13px;opacity:.65'>Every stage is done.</div>"
-    st.markdown(f"<div>{chips}{hint}</div>", unsafe_allow_html=True)
+
+    items = []
+
+    for step in WORKFLOW:
+        if step == current:
+            cls, label = "active", "current"
+        elif done[step]:
+            cls, label = "done", "done"
+        else:
+            cls, label = "todo", "to do"
+
+        items.append(
+            f'<li class="{cls}">'
+            f'<b>{step}</b>'
+            f'<span>{label}</span>'
+            f'</li>'
+        )
+
+    st.markdown(
+        """
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap');
+
+        .workflow-wrap {
+            margin: 22px 0 30px;
+            padding-top: 12px;
+            overflow-x: auto;
+            font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+        }
+
+        .workflow-steps {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            border-top: 1px solid color-mix(in srgb, currentColor 16%, transparent);
+            min-width: 680px;
+        }
+
+        .workflow-steps li {
+            position: relative;
+            padding: 16px 10px 0 0;
+            min-width: 0;
+        }
+
+        .workflow-steps li::before {
+            content: "";
+            position: absolute;
+            top: -9px;
+            left: 0;
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+            background: var(--background-color, Canvas);
+            box-shadow: inset 0 0 0 2px
+                color-mix(in srgb, currentColor 25%, transparent);
+        }
+
+        .workflow-steps li.done::before {
+            background: #3978ff;
+            box-shadow: none;
+        }
+
+        .workflow-steps li.active::before {
+            background: #e8960c;
+            box-shadow: 0 0 0 4px
+            color-mix(in srgb, #e8960c 25%, transparent);
+        }
+
+        .workflow-steps li.active b {color: #e8960c;}
+
+        .workflow-steps b {
+            display: block;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .workflow-steps span {
+            display: block;
+            font-size: 12px;
+            opacity: .6;
+        }
+
+        @media (max-width: 760px) {
+            .workflow-steps {
+                grid-template-columns: repeat(6, minmax(108px, 1fr));
+            }
+        }
+        </style>
+
+        <div class="workflow-wrap">
+            <ol class="workflow-steps">
+        """
+        + "".join(items)
+        + """
+            </ol>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
