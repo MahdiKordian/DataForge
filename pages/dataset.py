@@ -401,7 +401,7 @@ if ss.df is not None:
         f'<div class="dfd"><div class="dfd-cur"><div><div class="mono">current dataset</div>'
         f"<b>{html.escape(str(ss.df_name))}</b></div>"
         f'<div class="mono">{len(ss.df):,} rows &middot; {ss.df.shape[1]} columns'
-        f'{" &middot; target: " + html.escape(str(ss.target)) if ss.target else ""}</div></div></div>',
+        f"{' &middot; target: ' + html.escape(str(ss.target)) if ss.target else ''}</div></div></div>",
         unsafe_allow_html=True,
     )
     a, b, _ = st.columns([1, 1, 4])
