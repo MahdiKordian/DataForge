@@ -208,7 +208,11 @@ class OutlierHandler(Transformer):
         if m == "Leave as is":
             return
         chosen = self.params.get("out_cols")
-        cols = [c for c in (continuous(df, self.target_) if chosen is None else chosen) if c in df.columns]
+        cols = [
+            c
+            for c in (continuous(df, self.target_) if chosen is None else chosen)
+            if c in df.columns
+        ]
         for c in cols:
             s = df[c].dropna()
             if s.empty:
@@ -235,10 +239,23 @@ class OutlierHandler(Transformer):
                 mask |= out
             else:
                 clipped += int(out.sum())
-                df[c] = df[c].clip(lo, hi)
+
+                if out.any():
+                    values = pd.to_numeric(df[c], errors="raise")
+                    if pd.api.types.is_integer_dtype(values.dtype) and (
+                        float(lo).is_integer() and float(hi).is_integer()
+                    ):
+                        df[c] = values.clip(lower=int(lo), upper=int(hi))
+                    else:
+                        df[c] = values.astype("float64").clip(
+                            lower=lo,
+                            upper=hi,
+                        )
         if m.startswith("Remove"):
             if training and mask.any():
-                self.notes_.append(f"removed {int(mask.sum())} training row(s) with outliers")
+                self.notes_.append(
+                    f"removed {int(mask.sum())} training row(s) with outliers"
+                )
                 df = df[~mask]
         elif clipped and training:
             self.notes_.append(f"clipped {clipped} outlier value(s)")
