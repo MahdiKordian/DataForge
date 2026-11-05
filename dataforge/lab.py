@@ -24,7 +24,7 @@ DIMENSIONS = {"Missing numbers": ("Clean", "num_missing", MISSING_CHOICES),
 
 def sklearn_available() -> bool:
     try:
-        import sklearn  # noqa: F401  (only checking that it can be imported)
+        import sklearn
         return True
     except ImportError:
         return False
@@ -95,7 +95,13 @@ def run_lab(train_raw: pd.DataFrame, target: str, variants: dict, model_name: st
             try:
                 pipe = build_pipeline(cfg, target)
                 tr = pipe.fit_transform(df.iloc[tr_i])
-                va = pipe.transform(df.iloc[va_i])
+                imputer = next((step for label, step in pipe.steps if label == "Missing values"),None,)
+                va_raw = df.iloc[va_i].copy()
+                drop_cols = [c for c in getattr(imputer, "drop_rows_cols_", [])if c in va_raw.columns]
+                if drop_cols:
+                    va_raw = va_raw.dropna(subset=drop_cols)
+                va = pipe.transform(va_raw)
+
                 if va.empty or tr.empty:
                     raise ValueError("every row was removed")
                 bad = [c for c in tr.columns if c != target and not pd.api.types.is_numeric_dtype(tr[c])]

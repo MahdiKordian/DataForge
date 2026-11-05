@@ -224,7 +224,115 @@ def test_lab_reports_a_failing_variant_instead_of_crashing():
     assert res["table"].set_index("variant").loc["No encoding", "failed folds"] == 3
 
 
-# ---- benchmark correctness suite -----------------------------------------------------------------------------------
 def test_benchmark_correctness_suite_all_pass():
     r = BM.correctness()
     assert len(r) >= 14 and r["pass"].all(), r[~r["pass"]]
+
+
+def test_project_listing_recovers_interrupted_backup(tmp_path, monkeypatch):
+    pytest.importorskip("pyarrow")
+    monkeypatch.setenv("DATAFORGE_HOME", str(tmp_path))
+
+    df = toy(80)
+    PR.save_project("demo", df, {"target": "y"}, True)
+
+    project_dir = tmp_path / "projects" / "demo"
+    backup = tmp_path / "projects" / ".demo.backup-interrupted"
+
+    PR.os.replace(project_dir, backup)
+
+    assert [p["name"] for p in PR.list_projects()] == ["demo"]
+
+    assert project_dir.is_dir()
+    assert not backup.exists()
+
+    _, restored = PR.load_project("demo")
+
+    pd.testing.assert_frame_equal(restored, df)
+
+
+def test_project_load_recovers_valid_backup_when_current_project_is_corrupt(
+    tmp_path, monkeypatch
+):
+    pytest.importorskip("pyarrow")
+    monkeypatch.setenv("DATAFORGE_HOME", str(tmp_path))
+
+    original = toy(80)
+    PR.save_project("demo", original, {"target": "y"}, True)
+
+    project_dir = tmp_path / "projects" / "demo"
+    backup = tmp_path / "projects" / ".demo.backup-corrupt"
+
+    PR.os.replace(project_dir, backup)
+
+    project_dir.mkdir()
+    (project_dir / "project.json").write_text(
+        "{ invalid json",
+        encoding="utf-8",
+    )
+
+    _, restored = PR.load_project("demo")
+
+    pd.testing.assert_frame_equal(restored, original)
+    assert project_dir.is_dir()
+    assert not backup.exists()
+
+
+def test_project_load_keeps_original_error_when_all_backups_are_corrupt(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("DATAFORGE_HOME", str(tmp_path))
+
+    project_dir = tmp_path / "projects" / "demo"
+    backup = tmp_path / "projects" / ".demo.backup-corrupt"
+
+    project_dir.mkdir(parents=True)
+    backup.mkdir()
+
+    (project_dir / "project.json").write_text(
+        "{ invalid current json",
+        encoding="utf-8",
+    )
+    (backup / "project.json").write_text(
+        "{ invalid backup json",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(json.JSONDecodeError):
+        PR.load_project("demo")
+
+    assert project_dir.is_dir()
+    assert backup.is_dir()
+
+
+def test_project_overwrite_rolls_back_on_publish_failure(tmp_path, monkeypatch):
+    pytest.importorskip("pyarrow")
+    monkeypatch.setenv("DATAFORGE_HOME", str(tmp_path))
+
+    original = toy(80)
+    updated = toy(100)
+
+    PR.save_project("demo", original, {"target": "y"}, True)
+
+    real_replace = PR.os.replace
+    calls = 0
+
+    def failing_replace(src, dst):
+        nonlocal calls
+        calls += 1
+
+        if calls == 2:
+            raise OSError("simulated publish failure")
+
+        return real_replace(src, dst)
+
+    monkeypatch.setattr(PR.os, "replace", failing_replace)
+
+    with pytest.raises(OSError, match="simulated publish failure"):
+        PR.save_project("demo", updated, {"target": "y"}, True)
+
+    monkeypatch.setattr(PR.os, "replace", real_replace)
+
+    _, restored = PR.load_project("demo")
+
+    pd.testing.assert_frame_equal(restored, original)
