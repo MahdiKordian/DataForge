@@ -4,6 +4,7 @@
 fit(train)       learns every parameter from the TRAINING data only.
 transform(df)    applies those stored parameters to any data and never modifies df.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -15,8 +16,11 @@ class NotFittedError(RuntimeError):
 
 
 def is_text(s: pd.Series) -> bool:
-    return not (pd.api.types.is_numeric_dtype(s) or pd.api.types.is_bool_dtype(s)
-                or pd.api.types.is_datetime64_any_dtype(s))
+    return not (
+        pd.api.types.is_numeric_dtype(s)
+        or pd.api.types.is_bool_dtype(s)
+        or pd.api.types.is_datetime64_any_dtype(s)
+    )
 
 
 def numeric_cols(df: pd.DataFrame) -> list:
@@ -41,7 +45,6 @@ class Transformer:
         self.warnings_: list[str] = []
         self.target_ = None
 
-    # ---- public API -------------------------------------------------
     def fit(self, df: pd.DataFrame, target=None):
         self.target_ = target if target in df.columns else None
         self.notes_, self.warnings_ = [], []
@@ -58,7 +61,6 @@ class Transformer:
     def fit_transform(self, df: pd.DataFrame, target=None) -> pd.DataFrame:
         return self.fit(df, target).transform(df, training=True)
 
-    # ---- to override ------------------------------------------------
     def _fit(self, df): ...
 
     def _transform(self, df, training):
@@ -74,7 +76,7 @@ class InfToNan(Transformer):
             self.notes_.append(f"treated {n} infinite value(s) as missing")
 
     def _transform(self, df, training):
-        for c in df.select_dtypes("category").columns:      # memory-optimised data: work with plain values from here on
+        for c in df.select_dtypes("category").columns:
             df[c] = df[c].astype(object)
         num = df.select_dtypes("number").columns
         df[num] = df[num].replace([np.inf, -np.inf], np.nan)
@@ -83,6 +85,7 @@ class InfToNan(Transformer):
 
 class TextCleaner(Transformer):
     """trim / case / numbers stored as text / duplicate rows."""
+
     name = "Text cleanup"
 
     def _clean(self, s: pd.Series) -> pd.Series:
@@ -104,13 +107,19 @@ class TextCleaner(Transformer):
         self.text_cols_ = [c for c in df.columns if is_text(df[c])]
         self.numeric_cols_ = []
         if self.params.get("to_num", True):
-            for c in [c for c in self.text_cols_ if c not in set(self.params.get("protect") or [])]:
+            for c in [
+                c
+                for c in self.text_cols_
+                if c not in set(self.params.get("protect") or [])
+            ]:
                 s = self._clean(df[c])
                 num = pd.to_numeric(s, errors="coerce")
                 if s.notna().any() and num.notna().sum() == s.notna().sum():
                     self.numeric_cols_.append(c)
         if self.numeric_cols_:
-            self.notes_.append(f"{len(self.numeric_cols_)} text column(s) will be read as numbers")
+            self.notes_.append(
+                f"{len(self.numeric_cols_)} text column(s) will be read as numbers"
+            )
 
     def _transform(self, df, training):
         for c in self.text_cols_:
@@ -122,9 +131,9 @@ class TextCleaner(Transformer):
                 df[c] = pd.to_numeric(df[c], errors="coerce")
                 lost = int(before - df[c].notna().sum())
                 if lost:
-                    self.warnings_.append(f"`{c}`: {lost} value(s) were not numeric and became missing")
-        # Duplicates are removed from the TRAINING data only. Validation, test and new data keep every row,
-        # so predictions stay aligned with the rows that were sent in.
+                    self.warnings_.append(
+                        f"`{c}`: {lost} value(s) were not numeric and became missing"
+                    )
         if training and self.params.get("dups", True) and df.duplicated().any():
             k = int(df.duplicated().sum())
             df = df.drop_duplicates()
@@ -134,18 +143,29 @@ class TextCleaner(Transformer):
 
 class ColumnFilter(Transformer):
     """Drops mostly-empty and constant columns, judged on the training data."""
+
     name = "Column filter"
 
     def _fit(self, df):
         t, p = self.target_, self.params
         drop = []
         if p.get("max_missing", 60) < 100:
-            drop += [c for c in df.columns if c != t and df[c].isna().mean() * 100 > p["max_missing"]]
+            drop += [
+                c
+                for c in df.columns
+                if c != t and df[c].isna().mean() * 100 > p["max_missing"]
+            ]
         if p.get("const", True):
-            drop += [c for c in df.columns if c != t and c not in drop and df[c].nunique(dropna=True) <= 1]
+            drop += [
+                c
+                for c in df.columns
+                if c != t and c not in drop and df[c].nunique(dropna=True) <= 1
+            ]
         self.drop_ = drop
         if drop:
-            self.notes_.append(f"dropped {len(drop)} column(s): {', '.join(map(str, drop[:5]))}")
+            self.notes_.append(
+                f"dropped {len(drop)} column(s): {', '.join(map(str, drop[:5]))}"
+            )
 
     def _transform(self, df, training):
         return df.drop(columns=[c for c in self.drop_ if c in df.columns])
@@ -153,6 +173,7 @@ class ColumnFilter(Transformer):
 
 class MissingValueImputer(Transformer):
     """Fill values are computed on the training data and reused everywhere."""
+
     name = "Missing values"
 
     def _fit(self, df):
@@ -162,14 +183,20 @@ class MissingValueImputer(Transformer):
             if c == t or pd.api.types.is_datetime64_any_dtype(df[c]):
                 continue
             s = df[c]
-            default = p.get("num_missing", "Median") if pd.api.types.is_numeric_dtype(s) else p.get("cat_missing", "Most common")
-            strat = (p.get("per_column") or {}).get(c) or default   # a per-column choice overrides the global one
+            default = (
+                p.get("num_missing", "Median")
+                if pd.api.types.is_numeric_dtype(s)
+                else p.get("cat_missing", "Most common")
+            )
+            strat = (p.get("per_column") or {}).get(c) or default
             v = None
             if strat == "Drop rows":
                 self.drop_rows_cols_.append(c)
             elif strat in ("Median", "Mean"):
-                if not pd.api.types.is_numeric_dtype(s) or pd.api.types.is_bool_dtype(s):
-                    strat = "Most common"               # a text column has no median or mean
+                if not pd.api.types.is_numeric_dtype(s) or pd.api.types.is_bool_dtype(
+                    s
+                ):
+                    strat = "Most common"
                     v = s.mode().iloc[0] if s.notna().any() else None
                 else:
                     v = s.median() if strat == "Median" else s.mean()
@@ -183,23 +210,32 @@ class MissingValueImputer(Transformer):
                 self.fill_[c] = v
         n = int(df[list(self.fill_)].isna().sum().sum()) if self.fill_ else 0
         if n:
-            self.notes_.append(f"filled {n} missing value(s) using training-set statistics")
+            self.notes_.append(
+                f"filled {n} missing value(s) using training-set statistics"
+            )
 
     def _transform(self, df, training):
         t = self.target_
-        if t and t in df.columns and self.params.get("drop_missing_target", True):
-            df = df[df[t].notna()].copy()
+
+        if training:
+            if t and t in df.columns and self.params.get("drop_missing_target", True):
+                df = df[df[t].notna()].copy()
+
+            cols = [c for c in self.drop_rows_cols_ if c in df.columns]
+
+            if cols:
+                df = df.dropna(subset=cols)
+
         for c, v in self.fill_.items():
             if c in df.columns:
                 df[c] = df[c].fillna(v)
-        cols = [c for c in self.drop_rows_cols_ if c in df.columns]
-        if cols:
-            df = df.dropna(subset=cols)
+
         return df
 
 
 class OutlierHandler(Transformer):
     """Bounds come from the training data. 'Remove rows' only removes TRAINING rows."""
+
     name = "Outliers"
 
     def _fit(self, df):
