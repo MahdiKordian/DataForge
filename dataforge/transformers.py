@@ -309,13 +309,15 @@ class SkewTransformer(Transformer):
             if len(s) > 2 and s.skew() > thr:
                 self.shift_[c] = float(max(0.0, -s.min()))
         if self.shift_:
-            self.notes_.append(f"reduced right skew in {len(self.shift_)} column(s): {', '.join(map(str, list(self.shift_)[:5]))}")
+            self.notes_.append(
+                f"reduced right skew in {len(self.shift_)} column(s): {', '.join(map(str, list(self.shift_)[:5]))}"
+            )
 
     def _transform(self, df, training):
         use_log = self.params.get("skew_method", "Log (log1p)").startswith("Log")
         for c, shift in self.shift_.items():
             if c in df.columns:
-                x = (df[c] + shift).clip(lower=0)  # unseen values below the training minimum are clamped
+                x = (df[c] + shift).clip(lower=0)
                 df[c] = np.log1p(x) if use_log else np.sqrt(x)
         return df
 
@@ -332,7 +334,9 @@ class CorrelationFilter(Transformer):
             up = cm.where(np.triu(np.ones(cm.shape), 1).astype(bool))
             self.drop_ = [c for c in up.columns if (up[c] > thr).any()]
         if self.drop_:
-            self.notes_.append(f"dropped {len(self.drop_)} near-duplicate column(s): {', '.join(map(str, self.drop_[:5]))}")
+            self.notes_.append(
+                f"dropped {len(self.drop_)} near-duplicate column(s): {', '.join(map(str, self.drop_[:5]))}"
+            )
 
     def _transform(self, df, training):
         return df.drop(columns=[c for c in self.drop_ if c in df.columns])
@@ -342,7 +346,11 @@ class ColumnDropper(Transformer):
     name = "Dropped columns"
 
     def _fit(self, df):
-        self.drop_ = [c for c in self.params.get("drop", []) if c in df.columns and c != self.target_]
+        self.drop_ = [
+            c
+            for c in self.params.get("drop", [])
+            if c in df.columns and c != self.target_
+        ]
         if self.drop_:
             self.notes_.append(f"dropped {len(self.drop_)} column(s) you chose")
 
@@ -353,29 +361,49 @@ class ColumnDropper(Transformer):
 class CategoricalEncoder(Transformer):
     """Categories and frequencies are learned on the training data.
     Categories never seen in training become all-zero (one-hot), -1 (ordinal) or 0 (frequency)."""
+
     name = "Encoding"
 
     def _fit(self, df):
         p, t = self.params, self.target_
-        self.bool_cols_ = [c for c in df.columns if c != t and pd.api.types.is_bool_dtype(df[c])]
-        self.date_cols_ = [c for c in df.columns if pd.api.types.is_datetime64_any_dtype(df[c])] if p.get("dates", True) else []
+        self.bool_cols_ = [
+            c for c in df.columns if c != t and pd.api.types.is_bool_dtype(df[c])
+        ]
+        self.date_cols_ = (
+            [c for c in df.columns if pd.api.types.is_datetime64_any_dtype(df[c])]
+            if p.get("dates", True)
+            else []
+        )
         work = self._dates(df.copy())
         cat = [c for c in work.columns if c != t and is_text(work[c])]
         lim = p.get("max_onehot", 10)
         self.low_ = [c for c in cat if work[c].nunique() <= lim]
         self.high_ = [c for c in cat if c not in self.low_]
         self.cats_ = {c: _sorted_unique(work[c]) for c in self.low_}
-        self.ord_ = {c: {v: i for i, v in enumerate(_sorted_unique(work[c]))}
-                     for c in (self.low_ if p.get("low") == "Ordinal" else []) + (self.high_ if p.get("high") == "Ordinal" else [])}
-        self.freq_ = {c: work[c].value_counts(normalize=True).to_dict() for c in self.high_} if p.get("high") == "Frequency" else {}
+        self.ord_ = {
+            c: {v: i for i, v in enumerate(_sorted_unique(work[c]))}
+            for c in (self.low_ if p.get("low") == "Ordinal" else [])
+            + (self.high_ if p.get("high") == "Ordinal" else [])
+        }
+        self.freq_ = (
+            {c: work[c].value_counts(normalize=True).to_dict() for c in self.high_}
+            if p.get("high") == "Frequency"
+            else {}
+        )
         self.target_map_ = None
         if t and p.get("encode_target", True) and is_text(work[t]):
             self.target_map_ = {v: i for i, v in enumerate(_sorted_unique(work[t]))}
-            self.notes_.append(f"target `{t}` becomes {len(self.target_map_)} numeric classes")
+            self.notes_.append(
+                f"target `{t}` becomes {len(self.target_map_)} numeric classes"
+            )
         if self.low_:
-            self.notes_.append(f"{len(self.low_)} column(s) {p.get('low', 'One-hot').lower()} encoded")
+            self.notes_.append(
+                f"{len(self.low_)} column(s) {p.get('low', 'One-hot').lower()} encoded"
+            )
         if self.high_:
-            self.notes_.append(f"{len(self.high_)} high-cardinality column(s): {str(p.get('high', 'Frequency')).lower()}")
+            self.notes_.append(
+                f"{len(self.high_)} high-cardinality column(s): {str(p.get('high', 'Frequency')).lower()}"
+            )
 
     def _dates(self, df):
         for c in self.date_cols_:
@@ -383,7 +411,9 @@ class CategoricalEncoder(Transformer):
                 if not pd.api.types.is_datetime64_any_dtype(df[c]):
                     df[c] = pd.to_datetime(df[c], errors="coerce")
                 for part in ("year", "month", "day", "weekday"):
-                    df[f"{c}_{part}"] = getattr(df[c].dt, "dayofweek" if part == "weekday" else part)
+                    df[f"{c}_{part}"] = getattr(
+                        df[c].dt, "dayofweek" if part == "weekday" else part
+                    )
                 df = df.drop(columns=c)
         return df
 
@@ -403,11 +433,15 @@ class CategoricalEncoder(Transformer):
             seen = set(self.cats_[c])
             unseen = int((~df[c].isin(seen) & df[c].notna()).sum())
             if unseen:
-                self.warnings_.append(f"`{c}`: {unseen} value(s) with a category not seen in training")
+                self.warnings_.append(
+                    f"`{c}`: {unseen} value(s) with a category not seen in training"
+                )
             if p.get("low", "One-hot") == "One-hot":
                 keep = self.cats_[c][1:] if p.get("drop_first", True) else self.cats_[c]
                 new = {f"{c}_{v}": (df[c] == v).astype(int) for v in keep}
-                df = pd.concat([df.drop(columns=c), pd.DataFrame(new, index=df.index)], axis=1)
+                df = pd.concat(
+                    [df.drop(columns=c), pd.DataFrame(new, index=df.index)], axis=1
+                )
             else:
                 df[c] = self._ordinal(df[c], self.ord_[c])
         for c in self.high_:
@@ -435,7 +469,11 @@ class FeatureScaler(Transformer):
         if m.startswith("Do not"):
             return
         chosen = self.params.get("cols")
-        cols = [c for c in (continuous(df, self.target_) if chosen is None else chosen) if c in df.columns]
+        cols = [
+            c
+            for c in (continuous(df, self.target_) if chosen is None else chosen)
+            if c in df.columns
+        ]
         for c in cols:
             s = df[c].astype(float)
             if m.startswith("Standard"):
@@ -447,7 +485,9 @@ class FeatureScaler(Transformer):
             if b and not pd.isna(b):
                 self.params_[c] = {"center": float(a), "scale": float(b)}
         if self.params_:
-            self.notes_.append(f"scaled {len(self.params_)} column(s) with {m.split(' (')[0].lower()} scaling (training statistics)")
+            self.notes_.append(
+                f"scaled {len(self.params_)} column(s) with {m.split(' (')[0].lower()} scaling (training statistics)"
+            )
 
     def _transform(self, df, training):
         for c, q in self.params_.items():
@@ -458,33 +498,48 @@ class FeatureScaler(Transformer):
 
 def _label(s: pd.Series) -> pd.Series:
     """Category labels as text. Whole numbers lose a trailing .0 (so 1.0 and 1 are the same label)."""
+
     def f(v):
         if pd.isna(v):
             return np.nan
         if isinstance(v, (float, np.floating)) and float(v).is_integer():
             return str(int(v))
         return str(v)
+
     return s.map(f)
 
 
 class TypeCaster(Transformer):
     """Applies the variable types the user confirmed (continuous, categorical, ordinal, id, datetime, ...)."""
+
     name = "Variable types"
 
     def _fit(self, df):
         given = self.params.get("types") or {}
-        self.types_ = {c: v for c, v in given.items() if c in df.columns and c != self.target_ and v not in ("target",)}
+        self.types_ = {
+            c: v
+            for c, v in given.items()
+            if c in df.columns and c != self.target_ and v not in ("target",)
+        }
         orders = self.params.get("orders") or {}
         self.ranks_ = {}
         for c, v in self.types_.items():
             if v == "ordinal":
                 order = orders.get(c) or [str(x) for x in _sorted_unique(_label(df[c]))]
-                self.ranks_[c] = {str(o).strip().lower(): i for i, o in enumerate(order)}
+                self.ranks_[c] = {
+                    str(o).strip().lower(): i for i, o in enumerate(order)
+                }
         gone = [c for c, v in self.types_.items() if v in ("id", "text")]
         if gone:
-            self.notes_.append(f"left out {len(gone)} identifier/text column(s): {', '.join(map(str, gone[:5]))}")
-        k = sum(v in ("categorical", "ordinal") and pd.api.types.is_numeric_dtype(df[c]) and not pd.api.types.is_bool_dtype(df[c])
-                for c, v in self.types_.items())
+            self.notes_.append(
+                f"left out {len(gone)} identifier/text column(s): {', '.join(map(str, gone[:5]))}"
+            )
+        k = sum(
+            v in ("categorical", "ordinal")
+            and pd.api.types.is_numeric_dtype(df[c])
+            and not pd.api.types.is_bool_dtype(df[c])
+            for c, v in self.types_.items()
+        )
         if k:
             self.notes_.append(f"{k} numeric column(s) treated as categories")
 
@@ -497,10 +552,15 @@ class TypeCaster(Transformer):
             elif v in ("continuous", "discrete"):
                 if not pd.api.types.is_numeric_dtype(df[c]):
                     before = df[c].notna().sum()
-                    df[c] = pd.to_numeric(df[c].astype("string").str.strip().replace("", pd.NA), errors="coerce")
+                    df[c] = pd.to_numeric(
+                        df[c].astype("string").str.strip().replace("", pd.NA),
+                        errors="coerce",
+                    )
                     lost = int(before - df[c].notna().sum())
                     if lost:
-                        self.warnings_.append(f"`{c}`: {lost} value(s) were not numbers and became missing")
+                        self.warnings_.append(
+                            f"`{c}`: {lost} value(s) were not numbers and became missing"
+                        )
             elif v == "categorical":
                 df[c] = _label(df[c])
             elif v == "ordinal":
@@ -508,7 +568,9 @@ class TypeCaster(Transformer):
                 rk = lab.map(self.ranks_[c]).astype(float)
                 unseen = int((lab.notna() & rk.isna()).sum())
                 if unseen:
-                    self.warnings_.append(f"`{c}`: {unseen} value(s) are not in the order you gave and became missing")
+                    self.warnings_.append(
+                        f"`{c}`: {unseen} value(s) are not in the order you gave and became missing"
+                    )
                 df[c] = rk
             elif v == "datetime":
                 try:
