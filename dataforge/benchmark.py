@@ -103,7 +103,6 @@ def scaling_exponents(speed: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(out).sort_values("time ~ rows^", ascending=False).reset_index(drop=True)
 
 
-# ------------------------------------------------------------------------------------ correctness
 def correctness() -> pd.DataFrame:
     """Checks against answers known in advance. Each row: what was checked, expected, measured, pass."""
     out = []
@@ -153,15 +152,14 @@ def environment() -> dict:
             "cpu count": os.cpu_count()}
 
 
-# ------------------------------------------------------------------------- comparison with other tools
 _TOOL_CODE = r"""
 import json, sys, time, warnings
 warnings.filterwarnings("ignore")
 try:
     import resource
-    _div = 1024 * 1024 if sys.platform == "darwin" else 1024      # ru_maxrss: bytes on macOS, KB on Linux
+    _div = 1024 * 1024 if sys.platform == "darwin" else 1024
     def _rss(): return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / _div
-except ImportError:                                               # Windows
+except ImportError:
     def _rss(): return float("nan")
 import pandas as pd
 df = pd.read_parquet(sys.argv[2]); tool = sys.argv[1]

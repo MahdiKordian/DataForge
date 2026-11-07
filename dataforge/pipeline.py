@@ -48,7 +48,7 @@ class SchemaError(ValueError):
 
 class Pipeline:
     def __init__(self, steps, target=None):
-        self.steps = steps            # list of (label, Transformer)
+        self.steps = steps
         self.target = target
         self.fitted_ = False
         self.log_: list[dict] = []
@@ -79,7 +79,7 @@ class Pipeline:
             self.warnings_ += step.warnings_
         out = df.reindex(columns=self.output_columns_)
         if self.target is not None and self.target not in df.columns:
-            out = out.drop(columns=[self.target], errors="ignore")   # new data may have no target column
+            out = out.drop(columns=[self.target], errors="ignore")
         return out
 
     def check_schema(self, df: pd.DataFrame) -> None:
