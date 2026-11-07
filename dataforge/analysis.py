@@ -66,7 +66,6 @@ def as_numeric(df, cols):
     return df[cols].apply(lambda s: s if _num(s) else pd.to_numeric(s.astype("string").str.strip().replace("", pd.NA), errors="coerce"))
 
 
-# ------------------------------------------------------------------------------------ univariate
 def univariate_numeric(df: pd.DataFrame, cols: list) -> pd.DataFrame:
     rows = []
     for c in cols:
@@ -144,7 +143,6 @@ def time_profile(df: pd.DataFrame, col: str, value_cols: list | None = None) -> 
     return out
 
 
-# ------------------------------------------------------------------------------- relationships
 def contingency(x, y) -> np.ndarray:
     """Counts table of two categorical columns (rows with a missing value in either are ignored). Much faster than pd.crosstab."""
     xc, xu = pd.factorize(pd.Series(x).reset_index(drop=True))
@@ -212,7 +210,7 @@ def _pick(df, cols, k):
 def correlations(df: pd.DataFrame, num: list, max_cols: int = 40) -> dict:
     cols = _pick(df, num, max_cols)
     x = as_numeric(_samp(df), cols).replace([np.inf, -np.inf], np.nan)
-    return {"pearson": x.corr("pearson"), "spearman": x.rank().corr("pearson"), "columns": cols, "capped": len(num) > len(cols)}   # Spearman = Pearson of the ranks
+    return {"pearson": x.corr("pearson"), "spearman": x.rank().corr("pearson"), "columns": cols, "capped": len(num) > len(cols)}
 
 
 def mixed_associations(df: pd.DataFrame, num: list, cat: list, max_cols: int = 30) -> pd.DataFrame:
@@ -266,12 +264,11 @@ def vif_table(df: pd.DataFrame, num: list, max_cols: int = 30) -> pd.DataFrame:
     return pd.DataFrame({"column": cols, "VIF": vif}).sort_values("VIF", ascending=False).reset_index(drop=True)
 
 
-# ---------------------------------------------------------------------------------- missing data
 def missing_analysis(df: pd.DataFrame, max_cols: int = 40, max_targets: int = 12) -> dict:
     full = na_frame(df)
     d = _samp(df, 10_000)
     miss = full.loc[d.index]
-    d = d.mask(miss)    # blanks become real NaN so every test below sees them as missing
+    d = d.mask(miss)
     with_m = [c for c in d.columns if miss[c].any()]
     per = pd.DataFrame({"column": with_m, "missing": [int(full[c].sum()) for c in with_m],
                         "missing %": [full[c].mean() * 100 for c in with_m]}).sort_values("missing %", ascending=False).reset_index(drop=True)
@@ -320,7 +317,6 @@ def missing_analysis(df: pd.DataFrame, max_cols: int = 40, max_targets: int = 12
     return out
 
 
-# ----------------------------------------------------------------------------------- data quality
 def quality_checks(df: pd.DataFrame, target=None) -> list[dict]:
     out = []
     add = lambda level, col, check, msg, n=0: out.append({"level": level, "column": col, "check": check, "message": msg, "count": int(n)})
@@ -370,7 +366,6 @@ def quality_checks(df: pd.DataFrame, target=None) -> list[dict]:
     return out
 
 
-# --------------------------------------------------------------------------------- scale warnings
 def correlation_note(r: float) -> str:
     a = abs(r)
     return "very weak" if a < 0.1 else "weak" if a < 0.3 else "moderate" if a < 0.5 else "strong" if a < 0.8 else "very strong"

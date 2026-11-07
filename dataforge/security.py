@@ -23,7 +23,6 @@ class UnsafeInput(ValueError):
     """The file or link was refused. The message is safe to show to the user."""
 
 
-# ------------------------------------------------------------------------------------------ files
 def safe_filename(name: str) -> str:
     name = os.path.basename(str(name).replace("\\", "/"))
     name = re.sub(r"[\x00-\x1f\x7f]", "", name).strip()
@@ -67,12 +66,10 @@ def check_upload(name: str, raw: bytes, max_mb: float | None = None) -> str:
     return ext
 
 
-# ------------------------------------------------------------------------------------------- URLs
 def _is_public(ip: str) -> bool:
-    a = ipaddress.ip_address(ip.split("%")[0])           # an IPv6 scope id ("fe80::1%eth0") is not part of the address
+    a = ipaddress.ip_address(ip.split("%")[0])
     if a.version == 6 and a.ipv4_mapped is not None:
         return _is_public(str(a.ipv4_mapped))
-    # is_global is False for private, loopback, link-local, reserved and shared (100.64.0.0/10) ranges
     return a.is_global and not (a.is_multicast or a.is_unspecified)
 
 
@@ -121,7 +118,6 @@ def safe_fetch(url: str, max_mb: float | None = None, timeout: int = 20, max_red
     raise UnsafeInput("Too many redirects.")
 
 
-# ------------------------------------------------------------------------------- personal data
 _EMAIL = re.compile(r"^[\w.+-]+@[\w-]+(\.[\w-]+)+$")
 _PHONE = re.compile(r"^\+?\d[\d\s().-]{7,17}\d$")
 _IPV4 = re.compile(r"^(\d{1,3}\.){3}\d{1,3}$")
@@ -180,7 +176,6 @@ def redact(text: str) -> str:
     return text
 
 
-# -------------------------------------------------------------------------------- project names
 _NAME_OK = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._ -]{0,62}$")
 
 
