@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from dataforge import benchmark as BM  # noqa: E402
+from dataforge import benchmark as BM
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--quick", action="store_true", help="smaller sizes")
@@ -21,17 +21,17 @@ out.mkdir(parents=True, exist_ok=True)
 sizes = ((5_000, 20), (20_000, 20)) if a.quick else ((5_000, 20), (20_000, 20), (100_000, 20), (20_000, 100), (500_000, 20))
 print("correctness...")
 corr = BM.correctness()
-corr.to_csv(out / "correctness.csv", index=False)
+corr.to_csv(out / "correctness.csv", index=False, lineterminator="\n")
 print("speed and memory...")
 speed = BM.run_speed(sizes, measure_memory=True)
-speed.to_csv(out / "speed.csv", index=False)
+speed.to_csv(out / "speed.csv", index=False, lineterminator="\n")
 exps = BM.scaling_exponents(speed)
-exps.to_csv(out / "scaling.csv", index=False)
+exps.to_csv(out / "scaling.csv", index=False, lineterminator="\n")
 tools = None
 if a.tools:
     print("tools...")
     tools = BM.compare_tools(((5_000, 20), (20_000, 20)) if a.quick else ((5_000, 20), (20_000, 20), (100_000, 20)))
-    tools.to_csv(out / "tools.csv", index=False)
+    tools.to_csv(out / "tools.csv", index=False, lineterminator="\n")
 
 env = BM.environment()
 md = [f"# DataForge benchmark\n\nRun on {date.today()}. Python {env['python']}, pandas {env['pandas']}, numpy {env['numpy']}, "
