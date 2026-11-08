@@ -1,6 +1,7 @@
 # Copyright (c) 2026 Mahdi Kordian. Licensed under the MIT License; see LICENSE.
 import html
 from datetime import datetime
+
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -14,7 +15,7 @@ PAGES = {
     "analysis": "pages/analysis.py",
     "export": "pages/export.py",
 }
-PIPELINE = ["Load", "Clean", "Transform", "Encode", "Scale", "Split"]
+PIPELINE = ["Load", "Split", "Clean", "Transform", "Encode", "Scale"]
 NONE = "None (unsupervised)"
 DEMO = True
 
@@ -38,9 +39,9 @@ background:conic-gradient(var(--c) calc(var(--p)*1%),var(--line) 0)}
 .ring::before{content:"";position:absolute;inset:9px;border-radius:50%;background:var(--background-color,Canvas)}
 .ring b{position:relative;font-size:26px}
 .dfd-score .lbl{font-weight:600;font-size:17px}
-.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(6,1fr);border-top:1px solid var(--line)}
+.steps{list-style:none;margin: 0 0 16px;padding:0;display:grid;grid-template-columns:repeat(6,1fr);border-top:1px solid var(--line)}
 .steps li{position:relative;padding:16px 10px 0 0}
-.steps li::before{content:"";position:absolute;top:-6px;left:0;width:11px;height:11px;border-radius:50%;
+.steps li::before{content:"";position:absolute;top:-9px;left:0;width:11px;height:11px;border-radius:50%;
 background:var(--background-color,Canvas);box-shadow:inset 0 0 0 2px var(--line)}
 .steps li.done::before{background:var(--blue);box-shadow:none}
 .steps li.next::before{background:var(--amber);box-shadow:0 0 0 4px color-mix(in srgb,var(--amber) 25%,transparent)}
@@ -56,8 +57,15 @@ background:var(--background-color,Canvas);box-shadow:inset 0 0 0 2px var(--line)
 
 def init_state():
     ss = st.session_state
-    for k, v in {"df": None, "df_name": "untitled", "target": None, "log": [],
-                 "snapshots": [], "modified_at": None, "split_done": False}.items():
+    for k, v in {
+        "df": None,
+        "df_name": "untitled",
+        "target": None,
+        "log": [],
+        "snapshots": [],
+        "modified_at": None,
+        "split_done": False,
+    }.items():
         ss.setdefault(k, v)
 
 
@@ -72,23 +80,32 @@ def go(page, **state):
 def load_demo():
     rng = np.random.default_rng(7)
     n = 300
-    df = pd.DataFrame({
-        "age": rng.integers(18, 70, n).astype(float),
-        "income": rng.lognormal(10.5, 0.6, n),
-        "city": rng.choice(["Tehran", "Shiraz", "Tabriz", "Isfahan"], n),
-        "plan": rng.choice(["free", "pro"], n, p=[0.85, 0.15]),
-        "country": "IR",
-        "churned": rng.choice([0, 1], n, p=[0.88, 0.12]),
-    })
+    df = pd.DataFrame(
+        {
+            "age": rng.integers(18, 70, n).astype(float),
+            "income": rng.lognormal(10.5, 0.6, n),
+            "city": rng.choice(["Tehran", "Shiraz", "Tabriz", "Isfahan"], n),
+            "plan": rng.choice(["free", "pro"], n, p=[0.85, 0.15]),
+            "country": "IR",
+            "churned": rng.choice([0, 1], n, p=[0.88, 0.12]),
+        }
+    )
     df.loc[rng.choice(n, 50, replace=False), "age"] = np.nan
     df = pd.concat([df, df.head(12)], ignore_index=True)
-    clear_all()                       # nothing from a previous dataset may survive
+    clear_all()
     now = datetime.now().strftime("%H:%M:%S")
     ss = st.session_state
     ss.df, ss.df_name, ss.modified_at = df, "demo.csv", now
     ss.snapshots = [{"name": "Loaded", "df": df.copy()}]
-    ss.log = [{"time": now, "step": "Load", "detail": "Loaded demo.csv",
-               "rows": len(df), "cols": df.shape[1]}]
+    ss.log = [
+        {
+            "time": now,
+            "step": "Load",
+            "detail": "Loaded demo.csv",
+            "rows": len(df),
+            "cols": df.shape[1],
+        }
+    ]
 
 
 def health(df):
@@ -110,7 +127,9 @@ def health(df):
         "outliers": outliers,
         "out_ok": outliers <= 0.01 * max(num.size, 1),
         "unencoded": int(cat.shape[1]),
-        "high_card": int(sum(df[c].nunique() > 20 and df[c].nunique() / len(df) > 0.5 for c in cat)),
+        "high_card": int(
+            sum(df[c].nunique() > 20 and df[c].nunique() / len(df) > 0.5 for c in cat)
+        ),
     }
 
 
@@ -135,7 +154,13 @@ def find_issues(df, target):
     e = html.escape
     for c, p in (df.isna().mean() * 100).items():
         if p > 0:
-            out.append((3 if p > 30 else 2, f"<code>{e(str(c))}</code> has {p:.1f}% missing values", "Clean"))
+            out.append(
+                (
+                    3 if p > 30 else 2,
+                    f"<code>{e(str(c))}</code> has {p:.1f}% missing values",
+                    "Clean",
+                )
+            )
     d = int(df.duplicated().sum())
     if d:
         out.append((2, f"{d} duplicate rows", "Clean"))
@@ -150,20 +175,48 @@ def find_issues(df, target):
             if iqr > 0:
                 r = ((s < q1 - 1.5 * iqr) | (s > q3 + 1.5 * iqr)).mean() * 100
                 if r > 5:
-                    out.append((2, f"<code>{e(str(c))}</code> has {r:.1f}% outliers", "Transform"))
-    cat = [c for c in df.select_dtypes(exclude=["number", "bool", "datetime", "timedelta"])]
+                    out.append(
+                        (
+                            2,
+                            f"<code>{e(str(c))}</code> has {r:.1f}% outliers",
+                            "Transform",
+                        )
+                    )
+    cat = [
+        c for c in df.select_dtypes(exclude=["number", "bool", "datetime", "timedelta"])
+    ]
     if cat:
-        out.append((2, f"{len(cat)} categorical columns are not encoded: {e(', '.join(map(str, cat[:4])))}", "Encode"))
+        out.append(
+            (
+                2,
+                f"{len(cat)} categorical columns are not encoded: {e(', '.join(map(str, cat[:4])))}",
+                "Encode",
+            )
+        )
     for c in cat:
         if df[c].nunique() > 20 and df[c].nunique() / len(df) > 0.5:
-            out.append((1, f"<code>{e(str(c))}</code> has very high cardinality", "Encode"))
+            out.append(
+                (1, f"<code>{e(str(c))}</code> has very high cardinality", "Encode")
+            )
     if target in df.columns:
         s = df[target]
         if s.isna().any():
-            out.append((3, f"Target <code>{e(str(target))}</code> has {int(s.isna().sum())} missing values", "Clean"))
+            out.append(
+                (
+                    3,
+                    f"Target <code>{e(str(target))}</code> has {int(s.isna().sum())} missing values",
+                    "Clean",
+                )
+            )
         s = s.dropna()
-        if len(s) and is_classification(s) and s.value_counts(normalize=True).min() < 0.2:
-            out.append((2, f"Target <code>{e(str(target))}</code> is imbalanced", "Transform"))
+        if (
+            len(s)
+            and is_classification(s)
+            and s.value_counts(normalize=True).min() < 0.2
+        ):
+            out.append(
+                (2, f"Target <code>{e(str(target))}</code> is imbalanced", "Transform")
+            )
     return sorted(out, key=lambda x: -x[0])
 
 
@@ -171,12 +224,23 @@ def overview(df):
     rows = []
     for c in df.columns:
         s = df[c]
-        if pd.api.types.is_numeric_dtype(s) and not pd.api.types.is_bool_dtype(s) and s.notna().sum() > 1:
+        if (
+            pd.api.types.is_numeric_dtype(s)
+            and not pd.api.types.is_bool_dtype(s)
+            and s.notna().sum() > 1
+        ):
             dist = np.histogram(s.dropna(), bins=10)[0].tolist()
         else:
             dist = s.value_counts().head(10).tolist()
-        rows.append({"column": str(c), "type": str(s.dtype), "missing %": float(s.isna().mean() * 100),
-                     "unique": int(s.nunique()), "distribution": dist or [0]})
+        rows.append(
+            {
+                "column": str(c),
+                "type": str(s.dtype),
+                "missing %": float(s.isna().mean() * 100),
+                "unique": int(s.nunique()),
+                "distribution": dist or [0],
+            }
+        )
     return pd.DataFrame(rows)
 
 
