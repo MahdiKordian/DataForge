@@ -8,7 +8,14 @@ from dataforge import analysis as A, target as TG
 from dataforge.types import infer_types
 
 ss = st.session_state
-for k_, v_ in {"df": None, "target": None, "log": [], "snapshots": [], "split_done": False, "var_types": None}.items():
+for k_, v_ in {
+    "df": None,
+    "target": None,
+    "log": [],
+    "snapshots": [],
+    "split_done": False,
+    "var_types": None,
+}.items():
     ss.setdefault(k_, v_)
 
 workflow_bar("Analyze")
@@ -21,54 +28,110 @@ if ss.df is None:
         go("dataset")
     st.stop()
 
-# ---- which data ------------------------------------------------------------------------------------
 df = ss.df
 if ss.split_done and ss.get("n_train"):
-    pick = st.radio("Data to analyse", ["Training set (recommended)", "Whole current data"], horizontal=True,
-                    help="Decisions about preparation should be based on the training set only, so nothing is learned from the test set.")
+    pick = st.radio(
+        "Data to analyse",
+        ["Training set (recommended)", "Whole current data"],
+        horizontal=True,
+        help="Decisions about preparation should be based on the training set only, so nothing is learned from the test set.",
+    )
     if pick.startswith("Training"):
-        df = ss.df.iloc[:ss.n_train]
+        df = ss.df.iloc[: ss.n_train]
 raw_like = not ss.get("pipeline_cfg")
-types = (ss.var_types or {c: v["type"] for c, v in infer_types(df, ss.target).items()}) if raw_like else None
+types = (
+    (ss.var_types or {c: v["type"] for c, v in infer_types(df, ss.target).items()})
+    if raw_like
+    else None
+)
 target = ss.target if ss.target in df.columns else None
 num, cat, dt = A.split_cols(df, target, types)
-st.caption(f"{len(df):,} rows · {len(num)} numeric, {len(cat)} categorical, {len(dt)} date column(s)"
-           + (" · using your confirmed variable types" if ss.var_types and raw_like else ""))
+st.caption(
+    f"{len(df):,} rows · {len(num)} numeric, {len(cat)} categorical, {len(dt)} date column(s)"
+    + (" · using your confirmed variable types" if ss.var_types and raw_like else "")
+)
 if len(num) + len(cat) > 80:
-    st.caption("Wide data: relationship tables use the 30 to 40 columns with the most values, on a sample of up to 20,000 rows.")
+    st.caption(
+        "Wide data: relationship tables use the 30 to 40 columns with the most values, on a sample of up to 20,000 rows."
+    )
 
 
 def heat(M, lo=-1, hi=1):
-    long = M.rename_axis("a").reset_index().melt(id_vars="a", var_name="b", value_name="v")
-    st.altair_chart(alt.Chart(long).mark_rect().encode(
-        x=alt.X("b:N", title=None, sort=list(M.columns)), y=alt.Y("a:N", title=None, sort=list(M.index)),
-        color=alt.Color("v:Q", scale=alt.Scale(scheme="blueorange", domain=[lo, hi]), title=None),
-        tooltip=["a", "b", alt.Tooltip("v:Q", format=".2f")]).properties(height=min(18 * len(M) + 40, 640)), width="stretch")
+    long = (
+        M.rename_axis("a").reset_index().melt(id_vars="a", var_name="b", value_name="v")
+    )
+    st.altair_chart(
+        alt.Chart(long)
+        .mark_rect()
+        .encode(
+            x=alt.X("b:N", title=None, sort=list(M.columns)),
+            y=alt.Y("a:N", title=None, sort=list(M.index)),
+            color=alt.Color(
+                "v:Q", scale=alt.Scale(scheme="blueorange", domain=[lo, hi]), title=None
+            ),
+            tooltip=["a", "b", alt.Tooltip("v:Q", format=".2f")],
+        )
+        .properties(height=min(18 * len(M) + 40, 640)),
+        width="stretch",
+    )
 
 
 @st.cache_data(show_spinner="Calculating...", max_entries=6)
-def c_uni_num(d, cols): return A.univariate_numeric(d, cols)
+def c_uni_num(d, cols):
+    return A.univariate_numeric(d, cols)
+
+
 @st.cache_data(show_spinner="Calculating...", max_entries=6)
-def c_uni_cat(d, cols): return A.univariate_categorical(d, cols)
+def c_uni_cat(d, cols):
+    return A.univariate_categorical(d, cols)
+
+
 @st.cache_data(show_spinner="Calculating...", max_entries=6)
-def c_corr(d, cols): return A.correlations(d, cols)
-@st.cache_data(show_spinner="Calculating (this can take a few seconds)...", max_entries=4)
-def c_mixed(d, n, c): return A.mixed_associations(d, n, c)
+def c_corr(d, cols):
+    return A.correlations(d, cols)
+
+
+@st.cache_data(
+    show_spinner="Calculating (this can take a few seconds)...", max_entries=4
+)
+def c_mixed(d, n, c):
+    return A.mixed_associations(d, n, c)
+
+
 @st.cache_data(show_spinner="Calculating...", max_entries=4)
-def c_nl(d, cols): return A.nonlinear_candidates(d, cols)
+def c_nl(d, cols):
+    return A.nonlinear_candidates(d, cols)
+
+
 @st.cache_data(show_spinner="Calculating...", max_entries=4)
-def c_vif(d, cols): return A.vif_table(d, cols)
+def c_vif(d, cols):
+    return A.vif_table(d, cols)
+
+
 @st.cache_data(show_spinner="Looking at the gaps...", max_entries=4)
-def c_missing(d): return A.missing_analysis(d)
+def c_missing(d):
+    return A.missing_analysis(d)
+
+
 @st.cache_data(show_spinner="Checking quality...", max_entries=4)
-def c_quality(d, t): return A.quality_checks(d, t)
+def c_quality(d, t):
+    return A.quality_checks(d, t)
 
 
-tabs = st.tabs(["Univariate", "Relationships", "Missing data", "Data quality", "Target intelligence"])
+tabs = st.tabs(
+    [
+        "Univariate",
+        "Relationships",
+        "Missing data",
+        "Data quality",
+        "Target intelligence",
+    ]
+)
 
-# ---- 1. univariate ---------------------------------------------------------------------------------------
 with tabs[0]:
-    kind = st.radio("Columns", ["Numeric", "Categorical", "Dates"], horizontal=True, key="uni_kind")
+    kind = st.radio(
+        "Columns", ["Numeric", "Categorical", "Dates"], horizontal=True, key="uni_kind"
+    )
     if kind == "Numeric":
         if not num:
             st.info("No numeric columns.")
@@ -79,8 +142,15 @@ with tabs[0]:
             col = st.selectbox("Look at one column", num, key="uni_num_col")
             x = A.as_numeric(df, [col])[col].dropna()
             if len(x):
-                st.altair_chart(alt.Chart(pd.DataFrame({col: x.sample(min(len(x), 5000), random_state=0)})).mark_bar().encode(
-                    alt.X(f"{col}:Q", bin=alt.Bin(maxbins=40)), y="count()").properties(height=220), width="stretch")
+                st.altair_chart(
+                    alt.Chart(
+                        pd.DataFrame({col: x.sample(min(len(x), 5000), random_state=0)})
+                    )
+                    .mark_bar()
+                    .encode(alt.X(f"{col}:Q", bin=alt.Bin(maxbins=40)), y="count()")
+                    .properties(height=220),
+                    width="stretch",
+                )
     elif kind == "Categorical":
         if not cat:
             st.info("No categorical columns.")
@@ -88,15 +158,39 @@ with tabs[0]:
             T, var = c_uni_cat(df, cat[:100])
             st.dataframe(T, hide_index=True, width="stretch")
             for c, groups in var.items():
-                st.warning(f"`{c}`: these spellings probably mean the same thing: " + "; ".join(" / ".join(map(str, g[:4])) for g in groups[:3]))
+                st.warning(
+                    f"`{c}`: these spellings probably mean the same thing: "
+                    + "; ".join(" / ".join(map(str, g[:4])) for g in groups[:3])
+                )
             col = st.selectbox("Look at one column", cat, key="uni_cat_col")
-            vc = df[col].astype(str).where(df[col].notna()).value_counts().head(20).rename_axis("value").reset_index(name="rows")
-            st.altair_chart(alt.Chart(vc).mark_bar().encode(x="rows:Q", y=alt.Y("value:N", sort="-x")).properties(height=min(24 * len(vc) + 30, 500)),
-                            width="stretch")
+            vc = (
+                df[col]
+                .astype(str)
+                .where(df[col].notna())
+                .value_counts()
+                .head(20)
+                .rename_axis("value")
+                .reset_index(name="rows")
+            )
+            st.altair_chart(
+                alt.Chart(vc)
+                .mark_bar()
+                .encode(x="rows:Q", y=alt.Y("value:N", sort="-x"))
+                .properties(height=min(24 * len(vc) + 30, 500)),
+                width="stretch",
+            )
     else:
-        cands = dt or [c for c in df.columns if df[c].dtype == object and df[c].astype(str).str.contains(r"\d{4}[-/]\d{1,2}", regex=True).mean() > 0.5]
+        cands = dt or [
+            c
+            for c in df.columns
+            if df[c].dtype == object
+            and df[c].astype(str).str.contains(r"\d{4}[-/]\d{1,2}", regex=True).mean()
+            > 0.5
+        ]
         if not cands:
-            st.info("No date columns found. Set a column's type to datetime on the Variable types page.")
+            st.info(
+                "No date columns found. Set a column's type to datetime on the Variable types page."
+            )
         else:
             col = st.selectbox("Date column", cands, key="uni_dt_col")
             P = A.time_profile(df, col, num[:8])
@@ -104,27 +198,52 @@ with tabs[0]:
                 st.info(P["note"])
             else:
                 m = st.columns(4)
-                m[0].metric("First", str(P["first"].date())); m[1].metric("Last", str(P["last"].date()))
-                m[2].metric("Irregular gaps", P["irregular gaps"]); m[3].metric("Empty periods", P["empty periods"])
+                m[0].metric("First", str(P["first"].date()))
+                m[1].metric("Last", str(P["last"].date()))
+                m[2].metric("Irregular gaps", P["irregular gaps"])
+                m[3].metric("Empty periods", P["empty periods"])
                 per = P["periods"].rename_axis("period").reset_index(name="rows")
                 per["period"] = per["period"].astype(str)
-                st.altair_chart(alt.Chart(per).mark_bar().encode(x=alt.X("period:N", sort=None, axis=alt.Axis(labelOverlap=True)), y="rows:Q").properties(height=200),
-                                width="stretch")
+                st.altair_chart(
+                    alt.Chart(per)
+                    .mark_bar()
+                    .encode(
+                        x=alt.X(
+                            "period:N", sort=None, axis=alt.Axis(labelOverlap=True)
+                        ),
+                        y="rows:Q",
+                    )
+                    .properties(height=200),
+                    width="stretch",
+                )
                 if P["unparseable"]:
-                    st.warning(f"{P['unparseable']} value(s) could not be read as dates.")
+                    st.warning(
+                        f"{P['unparseable']} value(s) could not be read as dates."
+                    )
                 if len(P["trends"]):
                     st.dataframe(P["trends"], hide_index=True, width="stretch")
 
-# ---- 2. relationships -------------------------------------------------------------------------------------
 with tabs[1]:
-    view = st.radio("View", ["Numeric correlations", "All columns together", "Non-linear candidates", "Collinearity (VIF)"], horizontal=True, key="rel_view")
+    view = st.radio(
+        "View",
+        [
+            "Numeric correlations",
+            "All columns together",
+            "Non-linear candidates",
+            "Collinearity (VIF)",
+        ],
+        horizontal=True,
+        key="rel_view",
+    )
     if view == "Numeric correlations":
         if len(num) < 2:
             st.info("Need at least two numeric columns.")
         else:
             C = c_corr(df, num)
             if C["capped"]:
-                st.caption(f"Showing the {len(C['columns'])} numeric columns with the most values.")
+                st.caption(
+                    f"Showing the {len(C['columns'])} numeric columns with the most values."
+                )
             which = st.radio("Method", ["Pearson", "Spearman"], horizontal=True)
             M = C["pearson" if which == "Pearson" else "spearman"]
             heat(M)
