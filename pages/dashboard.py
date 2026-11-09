@@ -258,9 +258,11 @@ st.markdown(CSS, unsafe_allow_html=True)
 df = ss.df
 
 if df is None:
-    st.markdown('<div class="dfd"><h1>Dashboard</h1><p style="margin-top:10px;opacity:.7">'
-                "No dataset yet. Add one to see its health, issues and next steps here.</p></div>",
-                unsafe_allow_html=True)
+    st.markdown(
+        '<div class="dfd"><h1>Dashboard</h1><p style="margin-top:10px;opacity:.7">'
+        "No dataset yet. Add one to see its health, issues and next steps here.</p></div>",
+        unsafe_allow_html=True,
+    )
     a, b, _ = st.columns([1, 1, 3])
     if a.button("Go to Dataset", type="primary", width="stretch"):
         go("dataset")
@@ -277,16 +279,26 @@ choice = right.selectbox("Target column", opts, index=opts.index(cur))
 ss.target = None if choice == NONE else choice
 
 h = health(df)
-res = compute_readiness(df, ss.target, ss.split_done, ss.get("train_df"), ss.get("val_df"), ss.get("test_df"), ss.get("leakage"))
+res = compute_readiness(
+    df,
+    ss.target,
+    ss.split_done,
+    ss.get("train_df"),
+    ss.get("val_df"),
+    ss.get("test_df"),
+    ss.get("leakage"),
+)
 score, checks = res["score"], res["checks"]
 color = "var(--blue)" if score >= 60 else "var(--amber)"
-label = "Ready for ML" if score >= 90 else "Almost there" if score >= 60 else "Needs work"
+label = (
+    "Ready for ML" if score >= 90 else "Almost there" if score >= 60 else "Needs work"
+)
 st.markdown(
     f'<div class="dfd"><div class="dfd-head"><div>'
     f'<div class="name">{html.escape(str(ss.df_name))}</div>'
     f'<div class="mono">{len(df):,} rows &middot; {df.shape[1]} columns &middot; '
-    f'{fmt_bytes(int(df.memory_usage(deep=True).sum()))} &middot; '
-    f'last change {ss.modified_at or "-"}</div></div>'
+    f"{fmt_bytes(int(df.memory_usage(deep=True).sum()))} &middot; "
+    f"last change {ss.modified_at or '-'}</div></div>"
     f'<div class="dfd-score"><div class="ring" style="--p:{score};--c:{color}"><b>{score}</b></div>'
     f'<div><div class="lbl">{label}</div><div class="mono">ML readiness</div></div></div>'
     f"</div></div>",
@@ -295,8 +307,10 @@ st.markdown(
 with st.expander("What counts toward the score"):
     st.caption(res["note"])
     for c_ in checks:
-        st.markdown(f"{'✅' if c_['passed'] else '⬜'} **{c_['name']}** (weight {c_['weight']}): {c_['detail']}"
-                    + ("" if c_["passed"] or not c_["fix"] else f" *{c_['fix']}*"))
+        st.markdown(
+            f"{'✅' if c_['passed'] else '⬜'} **{c_['name']}** (weight {c_['weight']}): {c_['detail']}"
+            + ("" if c_["passed"] or not c_["fix"] else f" *{c_['fix']}*")
+        )
 
 section("Data health")
 base = health(ss.snapshots[0]["df"]) if len(ss.snapshots) > 1 else None
@@ -329,9 +343,17 @@ if ss.split_done:
 nxt = next((s for s in PIPELINE if s not in done), None)
 items = ""
 for s in PIPELINE:
-    cls, txt = ("done", "done") if s in done else ("next", "next") if s == nxt else ("todo", "to do")
+    cls, txt = (
+        ("done", "done")
+        if s in done
+        else ("next", "next")
+        if s == nxt
+        else ("todo", "to do")
+    )
     items += f'<li class="{cls}"><b>{s}</b><span>{txt}</span></li>'
-st.markdown(f'<div class="dfd"><ul class="steps">{items}</ul></div>', unsafe_allow_html=True)
+st.markdown(
+    f'<div class="dfd"><ul class="steps">{items}</ul></div>', unsafe_allow_html=True
+)
 if nxt:
     if st.button(f"Continue with {nxt}", type="primary"):
         go("prepare", prepare_focus=nxt)
@@ -344,8 +366,11 @@ if not issues:
     st.success("No issues found.")
 for i, (sev, text, step) in enumerate(issues[:8]):
     a, b = st.columns([6, 1], vertical_alignment="center")
-    a.markdown(f'<div class="dfd issue"><span class="dot s{sev}"></span>{text}'
-               f'<span class="tag">{step}</span></div>', unsafe_allow_html=True)
+    a.markdown(
+        f'<div class="dfd issue"><span class="dot s{sev}"></span>{text}'
+        f'<span class="tag">{step}</span></div>',
+        unsafe_allow_html=True,
+    )
     if b.button("Fix", key=f"fix_{i}", width="stretch"):
         go("prepare", prepare_focus=step)
 if len(issues) > 8:
@@ -353,9 +378,13 @@ if len(issues) > 8:
 
 section("Columns")
 st.dataframe(
-    overview(df), hide_index=True, width="stretch",
+    overview(df),
+    hide_index=True,
+    width="stretch",
     column_config={
-        "missing %": st.column_config.ProgressColumn("missing %", min_value=0, max_value=100, format="%.1f%%"),
+        "missing %": st.column_config.ProgressColumn(
+            "missing %", min_value=0, max_value=100, format="%.1f%%"
+        ),
         "distribution": st.column_config.BarChartColumn("distribution"),
     },
 )
@@ -363,7 +392,7 @@ st.dataframe(
 c1, c2 = st.columns(2)
 with c1:
     section("Missing values")
-    miss = (df.isna().mean() * 100)
+    miss = df.isna().mean() * 100
     miss = miss[miss > 0].sort_values(ascending=False)
     if miss.empty:
         st.success("No missing values.")
