@@ -256,18 +256,30 @@ with tabs[1]:
             M = c_mixed(df, num, cat)
             heat(M, 0, 1)
             st.dataframe(A.top_pairs(M, 15), hide_index=True, width="stretch")
-            st.caption("Each cell is 0 to 1: |Spearman| for two numeric columns, Cramér's V for two categorical, "
-                       "and the square root of eta² for one of each. " + A.LIMITS["cramers_v"] + " " + A.LIMITS["eta"])
+            st.caption(
+                "Each cell is 0 to 1: |Spearman| for two numeric columns, Cramér's V for two categorical, "
+                "and the square root of eta² for one of each. "
+                + A.LIMITS["cramers_v"]
+                + " "
+                + A.LIMITS["eta"]
+            )
             hi = A.top_pairs(M, 50, 0.95)
             if len(hi):
-                st.warning(f"{len(hi)} pair(s) are almost the same information (0.95 or more). Consider dropping one of each pair.")
+                st.warning(
+                    f"{len(hi)} pair(s) are almost the same information (0.95 or more). Consider dropping one of each pair."
+                )
     elif view == "Non-linear candidates":
         if len(num) < 2:
             st.info("Need at least two numeric columns.")
         else:
             R = c_nl(df, num)
-            st.dataframe(R, hide_index=True, width="stretch") if len(R) else st.success("No pair looks related without also being linear.")
-            st.caption("Pairs with high mutual information but low Pearson correlation. " + A.LIMITS["nmi"])
+            st.dataframe(R, hide_index=True, width="stretch") if len(R) else st.success(
+                "No pair looks related without also being linear."
+            )
+            st.caption(
+                "Pairs with high mutual information but low Pearson correlation. "
+                + A.LIMITS["nmi"]
+            )
     else:
         V = c_vif(df, num)
         if not len(V):
@@ -276,14 +288,21 @@ with tabs[1]:
             st.dataframe(V, hide_index=True, width="stretch")
             st.caption(A.LIMITS["vif"])
 
-# ---- 3. missing ---------------------------------------------------------------------------------------------
 with tabs[2]:
     R = c_missing(df)
     if not len(R["per_column"]):
         st.success("No missing values.")
     else:
-        st.dataframe(R["per_column"], hide_index=True, width="stretch",
-                     column_config={"missing %": st.column_config.ProgressColumn(format="%.1f%%", min_value=0, max_value=100)})
+        st.dataframe(
+            R["per_column"],
+            hide_index=True,
+            width="stretch",
+            column_config={
+                "missing %": st.column_config.ProgressColumn(
+                    format="%.1f%%", min_value=0, max_value=100
+                )
+            },
+        )
         st.markdown("**Rows that are missing the same set of columns**")
         st.dataframe(R["patterns"], hide_index=True, width="stretch")
         if len(R["co_missing"]):
@@ -293,52 +312,99 @@ with tabs[2]:
             st.markdown("**Does being missing depend on other columns?**")
             st.dataframe(R["relations"], hide_index=True, width="stretch")
             if R["n_dependent"]:
-                st.warning(f"{R['n_dependent']} relationship(s) are statistically clear. Missingness is then not completely random, "
-                           "and simply deleting those rows may bias the data.")
+                st.warning(
+                    f"{R['n_dependent']} relationship(s) are statistically clear. Missingness is then not completely random, "
+                    "and simply deleting those rows may bias the data."
+                )
             else:
                 st.info("No column clearly predicts where the gaps are.")
         st.caption(R["limits"])
 
-# ---- 4. quality ----------------------------------------------------------------------------------------------
 with tabs[3]:
     Q = c_quality(df, target)
     if not Q:
         st.success("No quality problems found.")
     else:
         icon = {"error": "🔴", "warning": "🟠", "info": "🔵"}
-        st.dataframe(pd.DataFrame([{"": icon[q["level"]], "check": q["check"], "column": q["column"], "problem": q["message"], "rows": q["count"]} for q in Q]),
-                     hide_index=True, width="stretch")
+        st.dataframe(
+            pd.DataFrame(
+                [
+                    {
+                        "": icon[q["level"]],
+                        "check": q["check"],
+                        "column": q["column"],
+                        "problem": q["message"],
+                        "rows": q["count"],
+                    }
+                    for q in Q
+                ]
+            ),
+            hide_index=True,
+            width="stretch",
+        )
 
-# ---- 5. target -------------------------------------------------------------------------------------------------
 with tabs[4]:
     if not target:
-        st.info("Choose a target column on the Dashboard to see target analysis. Without a target you can still run the unsupervised check.")
+        st.info(
+            "Choose a target column on the Dashboard to see target analysis. Without a target you can still run the unsupervised check."
+        )
     guess = TG.guess_kind(df, target)
-    kind = st.selectbox("What kind of problem is it?", TG.KINDS, index=TG.KINDS.index(guess), help=f"Guessed from the target: {guess}.")
+    kind = st.selectbox(
+        "What kind of problem is it?",
+        TG.KINDS,
+        index=TG.KINDS.index(guess),
+        help=f"Guessed from the target: {guess}.",
+    )
     tcol = None
     if kind.startswith("Time"):
         tcol = st.selectbox("Date column", dt or list(df.columns))
     if kind != "Unsupervised" and not target:
         st.stop()
     if st.button("Analyse", type="primary"):
-        splits = {"train": ss.raw_splits["train"], "validation": ss.raw_splits.get("val"), "test": ss.raw_splits["test"]} if ss.get("raw_splits") else None
+        splits = (
+            {
+                "train": ss.raw_splits["train"],
+                "validation": ss.raw_splits.get("val"),
+                "test": ss.raw_splits["test"],
+            }
+            if ss.get("raw_splits")
+            else None
+        )
         res = TG.analyze_target(df, target, kind, tcol, types, splits)
         for f in res["flags"]:
-            {"error": st.error, "warning": st.warning}.get(f["level"], st.info)(f["message"])
+            {"error": st.error, "warning": st.warning}.get(f["level"], st.info)(
+                f["message"]
+            )
         if kind == "Classification":
             c1, c2 = st.columns([1, 2])
             c1.dataframe(res["distribution"], hide_index=True, width="stretch")
             if len(res["features"]):
-                c2.dataframe(res["features"], hide_index=True, width="stretch",
-                             column_config={"strength (0-1)": st.column_config.ProgressColumn(min_value=0, max_value=1, format="%.2f")})
+                c2.dataframe(
+                    res["features"],
+                    hide_index=True,
+                    width="stretch",
+                    column_config={
+                        "strength (0-1)": st.column_config.ProgressColumn(
+                            min_value=0, max_value=1, format="%.2f"
+                        )
+                    },
+                )
             if res["splits"] is not None:
                 st.markdown("**Class share in each split (%)**")
                 st.dataframe(res["splits"], hide_index=True, width="stretch")
         elif kind == "Regression":
             st.dataframe(res["summary"].rename("value").to_frame(), width="stretch")
             if len(res["features"]):
-                st.dataframe(res["features"], hide_index=True, width="stretch",
-                             column_config={"strength (0-1)": st.column_config.ProgressColumn(min_value=0, max_value=1, format="%.2f")})
+                st.dataframe(
+                    res["features"],
+                    hide_index=True,
+                    width="stretch",
+                    column_config={
+                        "strength (0-1)": st.column_config.ProgressColumn(
+                            min_value=0, max_value=1, format="%.2f"
+                        )
+                    },
+                )
             if len(res["extreme_targets"]):
                 st.markdown("**Most extreme target values**")
                 st.dataframe(res["extreme_targets"], width="stretch")
@@ -347,11 +413,24 @@ with tabs[4]:
                 st.dataframe(res["high_leverage"], hide_index=True, width="stretch")
         elif kind.startswith("Time"):
             if "summary" in res:
-                st.dataframe(res["summary"].astype(str).rename("value").to_frame(), width="stretch")
+                st.dataframe(
+                    res["summary"].astype(str).rename("value").to_frame(),
+                    width="stretch",
+                )
                 s = res["series"]
-                st.altair_chart(alt.Chart(s.iloc[::max(1, len(s) // 2000)]).mark_line().encode(x="time:T", y=alt.Y(f"{target}:Q")).properties(height=220), width="stretch")
+                st.altair_chart(
+                    alt.Chart(s.iloc[:: max(1, len(s) // 2000)])
+                    .mark_line()
+                    .encode(x="time:T", y=alt.Y(f"{target}:Q"))
+                    .properties(height=220),
+                    width="stretch",
+                )
                 if res["seasonal_lags"]:
-                    st.info("Autocorrelation peaks at lag(s) " + ", ".join(map(str, res["seasonal_lags"])) + ": a possible repeating cycle.")
+                    st.info(
+                        "Autocorrelation peaks at lag(s) "
+                        + ", ".join(map(str, res["seasonal_lags"]))
+                        + ": a possible repeating cycle."
+                    )
         else:
             if "pca" in res:
                 st.dataframe(res["pca"], hide_index=True, width="stretch")
