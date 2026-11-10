@@ -3,7 +3,7 @@ import streamlit as st
 
 from core import clear_all, read_upload
 from dataforge import projects as P
-from dataforge.scale import fingerprint
+from dataforge.scale import content_fingerprint, fingerprint
 from dataforge.security import UnsafeInput, pii_columns
 
 ss = st.session_state
@@ -83,8 +83,13 @@ if meta:
     if f is not None:
         try:
             df, _ = read_upload(f)
-            if fingerprint(df) != meta["dataset"]["fingerprint"]:
-                st.warning("This file is not identical to the one the project was saved with. Settings are applied anyway; check the results.")
+            expected = meta["dataset"].get("content_fingerprint")
+            actual = content_fingerprint(df) if expected else fingerprint(df)
+            if actual != (expected or meta["dataset"]["fingerprint"]):
+                st.warning(
+                    "This file is not identical to the one the project was saved with. "
+                    "Settings are applied anyway; check the results."
+                )
             clear_all()
             ss.update({"df": df.copy(), "df_name": meta["name"], "snapshots": [{"name": "Loaded", "df": df.copy()}],
                        "log": [{"time": "", "step": "Load", "detail": f"Opened project {meta['name']}", "rows": len(df), "cols": df.shape[1]}]})

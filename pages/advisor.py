@@ -69,7 +69,6 @@ for f in findings:
                 st.caption("Measured on the loaded data. 'std change %' shows how much each fill shrinks the spread; "
                            "'corr with target' is only shown for a numeric target.")
 
-# decisions -> settings for the Prepare page
 params, chosen = {}, []
 for f in findings:
     key = ss.decisions.get(f["id"])

@@ -65,7 +65,6 @@ con["allow_extra_columns"] = st.checkbox("Allow columns that are not in the cont
 ss.contract = con
 st.download_button("Download contract (.json)", json.dumps(con, indent=2), "contract.json", "application/json")
 
-# ---- 2. validation --------------------------------------------------------------------------
 st.subheader("2. Check a file")
 src = st.radio("Data to check", ["The current dataset", "A new file"], horizontal=True)
 df = None
