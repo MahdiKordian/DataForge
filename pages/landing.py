@@ -63,7 +63,7 @@ background:var(--soft);border-radius:12px;border-left:4px solid var(--blue);padd
 .lp-steps{list-style:none;margin:18px 0 0;padding:0;display:grid;grid-template-columns:repeat(6,1fr);
 border-top:1px solid var(--line)}
 .lp-steps li{position:relative;padding:18px 14px 0 0}
-.lp-steps li::before{content:"";position:absolute;top:-5px;left:0;width:9px;height:9px;border-radius:50%;background:var(--blue)}
+.lp-steps li::before{content:"";position:absolute;top:-8px;left:0;width:9px;height:9px;border-radius:50%;background:var(--blue)}
 .lp-steps .n{font-family:'IBM Plex Mono',monospace;font-size:12px;opacity:.5;display:block;margin-bottom:2px}
 .lp-steps b{font-size:17px}
 .lp-steps p{margin-top:4px;font-size:13.5px;opacity:.7}
@@ -165,6 +165,7 @@ for col, s in zip(st.columns(len(SAMPLES)), SAMPLES):
         present = sample_path(s) is not None
         if not present:
             st.caption(f"File missing: put `{s['file']}` in the `sample_data` folder.")
+        st.markdown('<div style="height: 14px;"></div>',unsafe_allow_html=True,)
         if st.button("Use this sample", key=f"sample_{s['key']}", width="stretch", disabled=not present):
             try:
                 with st.spinner(f"Loading {s['title']}..."):

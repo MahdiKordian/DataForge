@@ -158,7 +158,7 @@ def run_step(step, p):
         except ValueError as e:
             st.error(str(e))
             return None
-        ss.log = [e for e in ss.log if e.get("step") not in STEPS]   # a new split restarts preparation
+        ss.log = [e for e in ss.log if e.get("step") not in STEPS]
         ss.snapshots = ss.snapshots[:1]
         clear_prepared()
         ss.raw_splits = {"train": train, "val": val, "test": test}
