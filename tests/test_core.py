@@ -25,12 +25,11 @@ def toy(n=60, seed=0):
                          "city": r.choice(["a", "b", "c"], n), "y": r.choice(["yes", "no"], n)})
 
 
-# ---- parameters come from the training data only ----------------------
 def test_scaler_uses_train_statistics_only():
     train = pd.DataFrame({"x": [1.0, 2, 3, 4, 5, 6]})
     test = pd.DataFrame({"x": [1000.0, 2000, 3000]})
     s = FeatureScaler(method="Standard (z-score)").fit(train)
-    assert s.params_["x"]["center"] == pytest.approx(3.5)          # not affected by test
+    assert s.params_["x"]["center"] == pytest.approx(3.5)
     assert s.transform(test)["x"].iloc[0] == pytest.approx((1000 - 3.5) / train["x"].std())
 
 
@@ -49,7 +48,6 @@ def test_outlier_bounds_from_train():
     assert h.transform(test)["x"].tolist() == [lo, 50, hi]
 
 
-# ---- the input is never modified ---------------------------------------
 def test_transform_does_not_mutate_input():
     df = toy()
     before = df.copy()
@@ -59,7 +57,6 @@ def test_transform_does_not_mutate_input():
     pd.testing.assert_frame_equal(df, before)
 
 
-# ---- unseen categories / schema ------------------------------------------
 def test_unseen_category_is_handled():
     train = pd.DataFrame({"c": ["a", "b", "a", "b"], "y": [0, 1, 0, 1]})
     new = pd.DataFrame({"c": ["a", "zzz"], "y": [0, 1]})
@@ -91,7 +88,6 @@ def test_not_fitted_raises():
         build_pipeline(CFG, "y").transform(toy())
 
 
-# ---- edge cases -----------------------------------------------------------
 def test_infinite_values_become_missing():
     df = pd.DataFrame({"x": [1.0, np.inf, -np.inf, 4.0]})
     assert InfToNan().fit_transform(df)["x"].isna().sum() == 2
@@ -112,7 +108,6 @@ def test_pipeline_is_reproducible():
     pd.testing.assert_frame_equal(p1.transform(te), p2.transform(te))
 
 
-# ---- splitting + leakage -----------------------------------------------------
 def test_split_is_disjoint_reproducible_and_stratified():
     df = toy(200)
     df["row"] = range(len(df))
@@ -150,7 +145,6 @@ def test_readiness_is_explainable():
     assert next(c for c in r["checks"] if c["name"] == "Train/test split")["passed"] is False
 
 
-# ---- real sample datasets ------------------------------------------------------------
 @pytest.mark.parametrize("file,target", [("Telco_Customer_Churn.csv", "Churn"), ("Palmer_Penguins.csv", "species"),
                                          ("Ames_Housing.csv", "SalePrice")])
 def test_sample_datasets_end_to_end(file, target):

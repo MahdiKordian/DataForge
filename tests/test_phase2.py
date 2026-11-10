@@ -12,7 +12,6 @@ from dataforge.pipeline import Pipeline
 from tests.test_core import CFG, toy
 
 
-# ---- contract ----------------------------------------------------------------------
 def contract_df():
     return pd.DataFrame({"CustomerID": [f"c{i}" for i in range(30)], "Age": np.arange(20, 50),
                          "Income": np.linspace(1000, 5000, 30), "Type": ["a", "b", "c"] * 10})
@@ -41,8 +40,6 @@ def test_contract_numeric_text_with_blanks_is_numeric():
     c = infer_contract(df)
     assert c["columns"]["x"]["kind"] == "numeric" and validate_contract(df, c)["status"] == "passed"
 
-
-# ---- diff ----------------------------------------------------------------------------
 def test_diff_detects_drift_and_schema_changes():
     r = np.random.default_rng(0)
     a = pd.DataFrame({"age": r.normal(35, 5, 500), "city": r.choice(["x", "y"], 500), "k": 1.0})
@@ -59,7 +56,6 @@ def test_diff_identical_is_stable():
     assert (d["numeric"]["drift"] == "stable").all() and d["summary"]["change"].eq(0).all()
 
 
-# ---- advisor --------------------------------------------------------------------------
 def test_advisor_explains_and_gives_options_without_a_winner():
     r = np.random.default_rng(1)
     df = pd.DataFrame({"cid": [f"id{i}" for i in range(100)], "inc": np.where(r.random(100) < .2, np.nan, r.lognormal(10, 1, 100)),
@@ -77,7 +73,7 @@ def test_advisor_decision_changes_the_result():
     opt = next(o for o in next(x for x in diagnose(df, "y") if x["id"] == "missing:income")["options"] if o["key"] == "zero")
     cfg = {"Clean": merge(CFG, opt["patch"])["Clean"]}
     out = build_pipeline(cfg, "y").fit_transform(df)
-    assert (out["income"].iloc[:10] == 0).all()   # filled with 0, not the median
+    assert (out["income"].iloc[:10] == 0).all()
 
 
 def test_what_if_returns_one_row_per_strategy():
@@ -87,7 +83,6 @@ def test_what_if_returns_one_row_per_strategy():
     assert t.set_index("strategy").loc["Drop rows", "rows lost"] == 10
 
 
-# ---- save / load / rerun -----------------------------------------------------------------
 @pytest.mark.parametrize("file,target", [("Telco_Customer_Churn.csv", "Churn"), ("Palmer_Penguins.csv", "species"),
                                          ("Ames_Housing.csv", "SalePrice")])
 def test_saved_pipeline_gives_identical_output_after_roundtrip(file, target):
