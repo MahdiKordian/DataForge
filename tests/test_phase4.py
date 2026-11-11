@@ -165,19 +165,30 @@ def test_project_names_cannot_escape(tmp_path):
 
 
 def test_saved_pipeline_rejects_tampered_fields():
-    pipe = build_pipeline(CFG, "y"); pipe.fit_transform(toy(80))
-    st = pipe.state(); st["steps"][2]["learned"]["__class__"] = 1
+    pipe = build_pipeline(CFG, "y")
+    pipe.fit_transform(toy(80))
+    st = pipe.state()
+    st["steps"][2]["learned"]["__class__"] = 1
     with pytest.raises(ValueError, match="Unexpected field"):
         Pipeline.from_state(st)
 
 
-# ---- scale ------------------------------------------------------------------------------------------------------------
 def test_optimize_dtypes_saves_memory_without_changing_values():
     df = BM.make_dataset(20_000, 20)
     df["n"] = np.arange(len(df)) % 100
     out, rep = SC.optimize_dtypes(df)
     assert rep["after_mb"] < rep["before_mb"] and rep["saved %"] > 20
-    pd.testing.assert_frame_equal(out.astype({c: df[c].dtype for c in df.columns if str(out[c].dtype) != str(df[c].dtype)}), df, check_dtype=False)
+    pd.testing.assert_frame_equal(
+        out.astype(
+            {
+                c: df[c].dtype
+                for c in df.columns
+                if str(out[c].dtype) != str(df[c].dtype)
+            }
+        ),
+        df,
+        check_dtype=False,
+    )
     assert str(out["n"].dtype) == "uint8"
 
 
@@ -187,7 +198,9 @@ def test_pipeline_gives_the_same_result_on_optimised_data():
     a, _, b, _ = split_frame(df, "y", 20, 0, 1)
     c, _, d, _ = split_frame(opt, "y", 20, 0, 1)
     p1, p2 = build_pipeline(CFG, "y"), build_pipeline(CFG, "y")
-    pd.testing.assert_frame_equal(p1.fit_transform(a), p2.fit_transform(c), check_dtype=False)
+    pd.testing.assert_frame_equal(
+        p1.fit_transform(a), p2.fit_transform(c), check_dtype=False
+    )
     pd.testing.assert_frame_equal(p1.transform(b), p2.transform(d), check_dtype=False)
 
 
@@ -199,24 +212,31 @@ def test_smart_sample_keeps_rare_classes():
 
 def test_chunked_profile_equals_full_profile(tmp_path):
     df = BM.make_dataset(30_000, 8, seed=3)
-    f = tmp_path / "d.csv"; df.to_csv(f, index=False)
+    f = tmp_path / "d.csv"
+    df.to_csv(f, index=False)
     got = SC.profile_in_chunks(f, chunksize=4_000).set_index("column")
     num = df.select_dtypes("number")
     for c in ["num_0", "num_1"]:
         assert got.loc[c, "mean"] == pytest.approx(num[c].mean(), rel=1e-9)
         assert got.loc[c, "std"] == pytest.approx(num[c].std(), rel=1e-9)
-        assert got.loc[c, "min"] == num[c].min() and got.loc[c, "missing"] == num[c].isna().sum()
+        assert (
+            got.loc[c, "min"] == num[c].min()
+            and got.loc[c, "missing"] == num[c].isna().sum()
+        )
 
 
 def test_fingerprint_changes_with_data_and_is_stable():
     df = toy(500)
     assert SC.fingerprint(df) == SC.fingerprint(df.copy())
-    d2 = df.copy(); d2.loc[250, "age"] += 1
+    d2 = df.copy()
+    d2.loc[250, "age"] += 1
     assert SC.fingerprint(df) != SC.fingerprint(d2.iloc[:-1])
 
 
 def test_duckdb_and_polars_when_present(tmp_path):
-    df = BM.make_dataset(2000, 6); f = tmp_path / "d.csv"; df.to_csv(f, index=False)
+    df = BM.make_dataset(2000, 6)
+    f = tmp_path / "d.csv"
+    df.to_csv(f, index=False)
     eng = SC.engines()
     if eng["duckdb"]:
         s = SC.duckdb_summary(str(f))
