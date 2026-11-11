@@ -2,22 +2,36 @@
 import io
 import socket
 import zipfile
+import json
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from dataforge import benchmark as BM, lab as LB, projects as PR, scale as SC, security as SE
+from dataforge import (
+    benchmark as BM,
+    lab as LB,
+    projects as PR,
+    scale as SC,
+    security as SE,
+)
 from dataforge import build_pipeline, split_frame
 from dataforge.pipeline import Pipeline
 from tests.test_core import CFG, toy
 
 
-# ---- security: uploads -----------------------------------------------------------------------------------------
 def test_upload_checks_type_size_and_content():
     assert SE.check_upload("a.csv", b"a,b\n1,2\n") == "csv"
-    for name, raw in [("a.exe", b"x"), ("a.csv", b""), ("a.csv", b"MZ\x90\x00binary"), ("a.csv", b"a\x00b"),
-                      ("a.xlsx", b"not a zip"), ("a.parquet", b"nope"), ("a.json", b"hello"), ("a.xls", b"nope")]:
+    for name, raw in [
+        ("a.exe", b"x"),
+        ("a.csv", b""),
+        ("a.csv", b"MZ\x90\x00binary"),
+        ("a.csv", b"a\x00b"),
+        ("a.xlsx", b"not a zip"),
+        ("a.parquet", b"nope"),
+        ("a.json", b"hello"),
+        ("a.xls", b"nope"),
+    ]:
         with pytest.raises(SE.UnsafeInput):
             SE.check_upload(name, raw)
     with pytest.raises(SE.UnsafeInput, match="limit"):
@@ -245,50 +259,100 @@ def test_duckdb_and_polars_when_present(tmp_path):
         assert len(SC.polars_head(str(f), 100)) == 100
 
 
-# ---- projects ---------------------------------------------------------------------------------------------------------
 def test_project_roundtrip_and_integrity(tmp_path, monkeypatch):
     pytest.importorskip("pyarrow")
     monkeypatch.setenv("DATAFORGE_HOME", str(tmp_path))
     df = toy(200)
-    state = {"target": "y", "var_types": {"age": "continuous"}, "contract": {"columns": {}}, "decisions": {"missing:age": "median"},
-             "steps": [{"step": "Split", "params": {"test": 20, "val": 0, "seed": 1, "stratify": True, "balance": "None"}}]}
+    state = {
+        "target": "y",
+        "var_types": {"age": "continuous"},
+        "contract": {"columns": {}},
+        "decisions": {"missing:age": "median"},
+        "steps": [
+            {
+                "step": "Split",
+                "params": {
+                    "test": 20,
+                    "val": 0,
+                    "seed": 1,
+                    "stratify": True,
+                    "balance": "None",
+                },
+            }
+        ],
+    }
     PR.save_project("demo", df, state, True, "hello")
     assert [p["name"] for p in PR.list_projects()] == ["demo"]
     meta, back = PR.load_project("demo")
     pd.testing.assert_frame_equal(back, df)
-    assert meta["settings"]["target"] == "y" and meta["steps"][0]["step"] == "Split" and meta["notes"] == "hello"
+    assert (
+        meta["settings"]["target"] == "y"
+        and meta["steps"][0]["step"] == "Split"
+        and meta["notes"] == "hello"
+    )
     z = zipfile.ZipFile(io.BytesIO(PR.export_zip("demo")))
     assert {"demo/project.json", "demo/data.parquet"} <= set(z.namelist())
-    # tamper with the stored data -> refused
-    pd.concat([df, df.iloc[:1]]).to_parquet(tmp_path / "projects" / "demo" / "data.parquet")
+    pd.concat([df, df.iloc[:1]]).to_parquet(
+        tmp_path / "projects" / "demo" / "data.parquet"
+    )
     with pytest.raises(ValueError, match="does not match"):
         PR.load_project("demo")
     PR.delete_project("demo")
     assert PR.list_projects() == []
 
 
+def test_project_detects_change_outside_fast_fingerprint_sample(tmp_path, monkeypatch):
+    pytest.importorskip("pyarrow")
+    monkeypatch.setenv("DATAFORGE_HOME", str(tmp_path))
+
+    df = toy(1000)
+
+    PR.save_project("full-check", df, {}, store_data=True)
+
+    path = tmp_path / "projects" / "full-check" / "data.parquet"
+    stored = pd.read_parquet(path)
+
+    stored.loc[1, "age"] += 1
+
+    assert SC.fingerprint(df) == SC.fingerprint(stored)
+    assert SC.content_fingerprint(df) != SC.content_fingerprint(stored)
+
+    stored.to_parquet(path, index=False)
+
+    with pytest.raises(ValueError, match="does not match"):
+        PR.load_project("full-check")
+
+
 def test_project_without_data_and_bad_names(tmp_path, monkeypatch):
     monkeypatch.setenv("DATAFORGE_HOME", str(tmp_path))
     PR.save_project("settings only", toy(50), {"target": "y"}, store_data=False)
     meta, df = PR.load_project("settings only")
-    assert df is None and not (tmp_path / "projects" / "settings only" / "data.parquet").exists()
+    assert (
+        df is None
+        and not (tmp_path / "projects" / "settings only" / "data.parquet").exists()
+    )
     with pytest.raises(SE.UnsafeInput):
         PR.save_project("../evil", toy(5), {})
     with pytest.raises(FileNotFoundError):
         PR.load_project("missing")
 
 
-# ---- lab ----------------------------------------------------------------------------------------------------------------
 @pytest.mark.skipif(not LB.sklearn_available(), reason="scikit-learn not installed")
 def test_lab_compares_variants_without_a_test_set():
     import inspect
-    assert "test" not in " ".join(inspect.signature(LB.run_lab).parameters)      # the test set cannot be passed in
+
+    assert "test" not in " ".join(inspect.signature(LB.run_lab).parameters)
     df = BM.make_dataset(1500, 10, seed=4)
     v = LB.variants_for("Missing numbers", ["Median", "Mean", "Drop rows"])
     res = LB.run_lab(df, "y", v, "Logistic regression", folds=3, metric="macro F1")
     T = res["table"].set_index("variant")
-    assert list(T.index) == ["Median", "Mean", "Drop rows"] and T["failed folds"].sum() == 0
-    assert T.loc["Drop rows", "rows kept %"] < 100 and T.loc["Median", "rows kept %"] == pytest.approx(100)
+    assert (
+        list(T.index) == ["Median", "Mean", "Drop rows"]
+        and T["failed folds"].sum() == 0
+    )
+    assert T.loc["Drop rows", "rows kept %"] < 100 and T.loc[
+        "Median", "rows kept %"
+    ] == pytest.approx(100)
     assert T.loc["Median", "verdict"] == "baseline" and res["notes"]
 
 
