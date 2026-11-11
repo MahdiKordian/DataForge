@@ -9,7 +9,6 @@ from dataforge.types import infer_types
 from tests.test_core import CFG
 
 
-# ---- variable types ----------------------------------------------------------------------------
 def types_df(n=120):
     r = np.random.default_rng(0)
     return pd.DataFrame({
@@ -40,11 +39,11 @@ def test_confirmed_types_drive_the_pipeline():
     tr, _, te, _ = split_frame(df, "y", 25, 0, 1)
     pipe = build_pipeline(cfg, "y")
     out = pipe.fit_transform(tr)
-    assert "CustomerID" not in out.columns                       # identifiers are left out
-    assert any(c.startswith("PostalCode_") for c in out.columns)  # zip code is a category, not a number
-    assert any("0" == c.split("PostalCode_")[1][0] for c in out.columns if c.startswith("PostalCode_"))   # leading zero kept
+    assert "CustomerID" not in out.columns
+    assert any(c.startswith("PostalCode_") for c in out.columns)
+    assert any("0" == c.split("PostalCode_")[1][0] for c in out.columns if c.startswith("PostalCode_"))
     assert set(out["Size"].dropna().unique()) <= {0.0, 1.0, 2.0} or out["Size"].nunique() > 1
-    assert any(c.startswith("Joined_") for c in out.columns)     # date parts
+    assert any(c.startswith("Joined_") for c in out.columns)
     te_out = pipe.transform(te)
     assert list(te_out.columns) == list(out.columns)
 
@@ -65,7 +64,6 @@ def test_types_survive_save_and_load():
     pd.testing.assert_frame_equal(apply_saved(spec, te)[0], pipe.transform(te))
 
 
-# ---- association measures ------------------------------------------------------------------------
 def test_association_measures_behave():
     r = np.random.default_rng(1)
     a = pd.Series(r.choice(list("xyz"), 600)); b = a.map({"x": "p", "y": "q", "z": "r"})
@@ -73,7 +71,7 @@ def test_association_measures_behave():
     v = pd.Series(a.map({"x": 0.0, "y": 5.0, "z": 10.0}) + r.normal(0, .1, 600))
     assert A.eta_squared(a, v) > 0.95
     x = pd.Series(r.uniform(-3, 3, 800)); y = x ** 2 + r.normal(0, .1, 800)
-    assert abs(x.corr(y)) < 0.15 and 0.2 < A.nmi(x, y) <= 1.0     # a curve: Pearson blind, NMI sees it
+    assert abs(x.corr(y)) < 0.15 and 0.2 < A.nmi(x, y) <= 1.0
     assert A.nmi(pd.Series([1.0] * 100), pd.Series(r.random(100))) == 0.0
 
 
@@ -111,7 +109,6 @@ def test_time_profile_sees_gaps():
     assert P["irregular gaps"] == 1 and P["empty periods"] > 50 and len(P["trends"]) == 1
 
 
-# ---- target intelligence -----------------------------------------------------------------------------
 def test_classification_flags_imbalance_leakage_and_split_drift():
     r = np.random.default_rng(4); n = 600
     y = pd.Series(np.where(r.random(n) < 0.08, "pos", "neg"))
