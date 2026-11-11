@@ -155,20 +155,72 @@ CSS = """
 }
 
 /* ---------- Pipeline ---------- */
-.df h2 { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 22px; }
+
+/* ---------- Pipeline ---------- */
+.df h2 {
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin-bottom: 22px;
+}
+
 .df-steps {
-    list-style: none; margin: 0 0 72px; padding: 0;
-    display: grid; grid-template-columns: repeat(6, 1fr);
+    position: relative;
+    list-style: none;
+    margin: 0 0 72px;
+    padding: 0 !important;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    border-top: 0;
+}
+
+.df-steps::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: calc(100% / 6);
     border-top: 1px solid var(--line);
 }
-.df-steps li { padding: 18px 18px 0 0; position: relative; }
-.df-steps li::before {
-    content: ""; position: absolute; top: -5px; left: 0;
-    width: 9px; height: 9px; border-radius: 50%; background: var(--blue);
+
+.df-steps > li {
+    position: relative;
+    margin: 0 !important;
+    padding: 18px 18px 0 0 !important;
+    list-style: none !important;
+    min-width: 0;
 }
-.df-steps .n { font-family: 'IBM Plex Mono', monospace; font-size: 12px; opacity: 0.5; display: block; margin-bottom: 4px; }
-.df-steps b { font-size: 18px; }
-.df-steps p { margin-top: 4px; font-size: 13px; opacity: 0.7; max-width: 20ch; }
+
+.df-steps > li::before {
+    content: "";
+    position: absolute;
+    top: -4px;
+    left: 0;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--blue);
+}
+
+.df-steps .n {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    opacity: 0.5;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.df-steps b {
+    font-size: 18px;
+}
+
+.df-steps p {
+    margin-top: 4px;
+    font-size: 13px;
+    opacity: 0.7;
+    max-width: 20ch;
+}
+
 
 /* ---------- Features ---------- */
 .df-feats { margin-bottom: 72px; border-top: 1px solid var(--line); }
@@ -198,7 +250,8 @@ CSS = """
 @media (max-width: 820px) {
     .df-stage { grid-template-columns: 1fr; }
     .df-arrow { transform: rotate(90deg); }
-    .df-steps { grid-template-columns: 1fr 1fr; row-gap: 28px; }
+    .df-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 28px; }
+    .df-steps::before { display: none; }
     .df-steps p { max-width: none; }
     .df-feat { grid-template-columns: 1fr; gap: 6px; }
     .df-creator { grid-template-columns: 1fr; padding: 24px; }
