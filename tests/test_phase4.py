@@ -35,29 +35,60 @@ def test_zip_bomb_is_refused():
 def test_real_parquet_and_xlsx_pass(tmp_path):
     pytest.importorskip("pyarrow")
     df = pd.DataFrame({"a": [1, 2], "b": ["x", "y"]})
-    df.to_parquet(tmp_path / "p.parquet"); df.to_excel(tmp_path / "x.xlsx", index=False)
-    assert SE.check_upload("p.parquet", (tmp_path / "p.parquet").read_bytes()) == "parquet"
+    df.to_parquet(tmp_path / "p.parquet")
+    df.to_excel(tmp_path / "x.xlsx", index=False)
+    assert (
+        SE.check_upload("p.parquet", (tmp_path / "p.parquet").read_bytes()) == "parquet"
+    )
     assert SE.check_upload("x.xlsx", (tmp_path / "x.xlsx").read_bytes()) == "xlsx"
 
 
 def test_filename_is_sanitised():
-    assert SE.safe_filename("../../etc/passwd") == "passwd" and SE.safe_filename("a\x00b.csv") == "ab.csv"
+    assert (
+        SE.safe_filename("../../etc/passwd") == "passwd"
+        and SE.safe_filename("a\x00b.csv") == "ab.csv"
+    )
 
 
-# ---- security: URLs --------------------------------------------------------------------------------------------
 def fake_dns(monkeypatch, ip):
-    monkeypatch.setattr(socket, "getaddrinfo", lambda *a, **k: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (ip, 0))])
+    monkeypatch.setattr(
+        socket,
+        "getaddrinfo",
+        lambda *a, **k: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (ip, 0))],
+    )
 
 
-@pytest.mark.parametrize("url", ["file:///etc/passwd", "ftp://example.com/a.csv", "gopher://x", "http://user:pw@example.com/a.csv",
-                                 "http://example.com:22/a.csv", "http:///nohost"])
+@pytest.mark.parametrize(
+    "url",
+    [
+        "file:///etc/passwd",
+        "ftp://example.com/a.csv",
+        "gopher://x",
+        "http://user:pw@example.com/a.csv",
+        "http://example.com:22/a.csv",
+        "http:///nohost",
+    ],
+)
 def test_bad_urls_refused(url, monkeypatch):
     fake_dns(monkeypatch, "93.184.216.34")
     with pytest.raises(SE.UnsafeInput):
         SE.check_url(url)
 
 
-@pytest.mark.parametrize("ip", ["127.0.0.1", "10.0.0.5", "192.168.1.1", "169.254.169.254", "172.16.0.1", "0.0.0.0", "::1", "fe80::1", "::ffff:127.0.0.1"])
+@pytest.mark.parametrize(
+    "ip",
+    [
+        "127.0.0.1",
+        "10.0.0.5",
+        "192.168.1.1",
+        "169.254.169.254",
+        "172.16.0.1",
+        "0.0.0.0",
+        "::1",
+        "fe80::1",
+        "::ffff:127.0.0.1",
+    ],
+)
 def test_internal_addresses_refused(ip, monkeypatch):
     fake_dns(monkeypatch, ip)
     with pytest.raises(SE.UnsafeInput, match="private|internal"):
@@ -70,30 +101,56 @@ def test_public_address_allowed_and_redirect_to_internal_blocked(monkeypatch):
     import requests
 
     class R:
-        is_redirect, status_code, headers = True, 302, {"Location": "http://169.254.169.254/latest/meta-data"}
-        def __enter__(self): return self
-        def __exit__(self, *a): return False
+        is_redirect, status_code, headers = (
+            True,
+            302,
+            {"Location": "http://169.254.169.254/latest/meta-data"},
+        )
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
     calls = []
+
     def fake_get(url, **k):
         calls.append(url)
         return R()
+
     monkeypatch.setattr(requests, "get", fake_get)
     state = {"n": 0}
+
     def dns(host, *a, **k):
         ip = "93.184.216.34" if host == "example.com" else "169.254.169.254"
         return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (ip, 0))]
+
     monkeypatch.setattr(socket, "getaddrinfo", dns)
     with pytest.raises(SE.UnsafeInput, match="internal"):
         SE.safe_fetch("https://example.com/a.csv")
-    assert len(calls) == 1                                       # the internal address was never requested
+    assert len(calls) == 1
 
 
-# ---- security: personal data and names --------------------------------------------------------------------------
 def test_pii_scan_and_redaction():
-    df = pd.DataFrame({"mail": ["a@x.com", "b@y.org"] * 20, "tel": ["+1 415 555 0100", "+44 20 7946 0958"] * 20,
-                       "card": ["4539 1488 0343 6467"] * 40, "ip": ["8.8.8.8"] * 40, "FirstName": ["Ann"] * 40, "color": ["red", "blue"] * 20})
+    df = pd.DataFrame(
+        {
+            "mail": ["a@x.com", "b@y.org"] * 20,
+            "tel": ["+1 415 555 0100", "+44 20 7946 0958"] * 20,
+            "card": ["4539 1488 0343 6467"] * 40,
+            "ip": ["8.8.8.8"] * 40,
+            "FirstName": ["Ann"] * 40,
+            "color": ["red", "blue"] * 20,
+        }
+    )
     got = SE.pii_scan(df).groupby("column")["looks like"].apply(list).to_dict()
-    assert "email" in got["mail"] and "phone number" in got["tel"] and "card number" in got["card"] and "IP address" in got["ip"] and "FirstName" in got
+    assert (
+        "email" in got["mail"]
+        and "phone number" in got["tel"]
+        and "card number" in got["card"]
+        and "IP address" in got["ip"]
+        and "FirstName" in got
+    )
     assert "color" not in got
     assert "a@x.com" not in SE.redact("contact a@x.com or 4539 1488 0343 6467")
 
