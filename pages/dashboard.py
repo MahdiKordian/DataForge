@@ -205,7 +205,7 @@ def find_issues(df, target):
                 (
                     3,
                     f"Target <code>{e(str(target))}</code> has {int(s.isna().sum())} missing values",
-                    "Clean",
+                    "Split",
                 )
             )
         s = s.dropna()

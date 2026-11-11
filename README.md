@@ -5,8 +5,8 @@
 <br>
 
 <p>
-Prepare a dataset for machine learning without leaking test data into training.<br>
-Inspect it, decide what to fix, apply the fixes, and take away a clean dataset, a reusable pipeline and a report.
+Prepare datasets for machine learning with leakage-aware preprocessing.<br>
+Inspect your data, evaluate preparation options, apply transformations, and export prepared datasets, a reusable pipeline and a report.
 </p>
 
 <a href="https://dataforge-tool.streamlit.app/">
@@ -15,7 +15,7 @@ Inspect it, decide what to fix, apply the fixes, and take away a clean dataset, 
 
 <br><br>
 
-[![Version](https://img.shields.io/badge/version-v2.0.1-2ea44f)](https://github.com/MahdiKordian/DataForge)
+[![Version](https://img.shields.io/badge/version-v2.0.1-2ea44f)](https://github.com/MahdiKordian/DataForge/releases/tag/v2.0.1)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Tests](https://github.com/MahdiKordian/DataForge/actions/workflows/tests.yml/badge.svg)](https://github.com/MahdiKordian/DataForge/actions/workflows/tests.yml)
 [![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org)
@@ -55,11 +55,11 @@ Inspect it, decide what to fix, apply the fixes, and take away a clean dataset, 
 
 ## About
 
-Most of a machine learning project is not modeling. It is filling gaps, removing duplicates, taming outliers, encoding categories, scaling columns and splitting the data, repeated in notebook after notebook. It is also where the quietest mistakes happen: a median computed on the whole dataset, a scaler fitted before the split, an ID column that the model happily memorizes.
+Preparing a dataset for machine learning involves more than handling missing values. It requires assessing data quality, identifying unsuitable features, selecting appropriate transformations, and ensuring that validation and test data do not influence preprocessing.
 
-DataForge turns that routine into one guided web app. It checks the file you load, shows what is wrong with the data, explains the options instead of choosing for you, applies what you decide, and records every step. At the end you get the prepared train, validation and test sets, a single pipeline file that reproduces the work on new data, a Python script, and a report.
+DataForge brings these tasks into a guided workflow. It helps you inspect a dataset, evaluate preparation options, apply transformations, validate the results, and keep a record of each operation. The workflow produces prepared training, validation and test datasets, a reusable JSON pipeline, a generated Python script, and a report.
 
-It is built for students, analysts and ML engineers who want reliable preprocessing without rewriting the same pandas code every time.
+DataForge is designed for students, data analysts, and machine learning practitioners who need a transparent and repeatable approach to dataset preparation.
 
 <p align="center">
   <img src="docs/preview.svg" alt="A messy table before and after the Clean step" width="92%">
@@ -69,10 +69,10 @@ It is built for students, analysts and ML engineers who want reliable preprocess
 
 | The usual notebook | DataForge |
 |---|---|
-| Statistics are computed on all rows, then the data is split. Test information leaks into training. | **The data is split first.** Every step learns only from the training set and is then applied to validation and test. |
+| Statistics are computed on all rows, then the data is split. Test information leaks into training. | **The data is split before preprocessing is fitted.** Imputation statistics, category mappings, outlier thresholds and scaling parameters are learned from the training set, then reused for validation and test data. |
 | A leaked column or a duplicated row inflates the test score and nobody notices. | A **Leakage Guard** flags identical rows across sets and features that copy the target. |
 | Preparation lives in cells that were run in some order. | The pipeline is **rebuilt from the raw training set after every change**, so Undo is exact and the order you clicked never matters. |
-| "Which scaler, which imputation?" is decided by habit. | The **Advisor** lists options with pros, cons and conditions. The **Lab** compares them with cross-validation on the training set only. |
+| "Which scaler, which imputation?" is decided by habit. | The **Advisor** examines the loaded dataset, identifies issues and explains available options. The **Lab** compares preparation choices with cross-validation on the training set only. |
 | Applying the same steps to new data means copying code and hoping. | One **pipeline file** and a generated **Python script** reproduce the work. New files are checked against a **data contract** first. |
 | A zip code is treated as a number, an ID as a feature. | **Variable types** are inferred with a confidence and a reason. You confirm or override them. |
 
@@ -113,13 +113,13 @@ Split comes first. After that the steps run in a fixed, safe order.
 
 | Step | What you can do |
 |------|-----------------|
-| **Split** | Train, validation and test sets with your own ratios and seed, optional stratification, and oversampling or undersampling of the **training set only** for imbalanced classes. |
-| **Clean** | Trim whitespace, change text case, convert numbers stored as text, remove duplicate rows, drop constant and mostly-empty columns, remove rows with a missing target, and fill missing values with the median, mean, most common value, zero or "Unknown", or drop the rows. Overrides per column. Infinite values are treated as missing. |
+| **Split** | Remove rows with a missing target, then create train, validation and test sets using your chosen ratios and seed. Optionally stratify the split and oversample or undersample the **training set only** for imbalanced classes. |
+| **Clean** | Trim whitespace, change text case, convert numbers stored as text, remove duplicate rows, drop constant and mostly-empty columns, and handle missing values with the median, mean, most common value, zero or "Unknown", or by dropping rows with missing values in selected columns. Overrides are available per column. Infinite values are treated as missing. |
 | **Transform** | Clip outliers at the 1st and 99th percentile or at IQR bounds, remove outlier rows, reduce skew with a log or square-root transform, drop highly correlated or unwanted columns. |
 | **Encode** | One-hot or ordinal encoding for columns with few categories, frequency or ordinal encoding (or dropping) for high-cardinality columns, date columns split into year, month, day and weekday, text targets turned into numeric classes. |
 | **Scale** | Standard (z-score), Min-max (0 to 1) or Robust (median and IQR) scaling on the columns you choose. |
 
-Every step has **Preview** (nothing is saved), **Run**, and a page-level **Undo last step** and **Reset**. Rows are removed from the training set only, so validation, test and new data keep every row and predictions stay aligned with what you sent in.
+Every step has **Preview** (nothing is changed), **Run**, and page-level **Undo last step** and **Reset** controls. Rows with a missing target are excluded before the split. After splitting, preparation-time row-removal operations, including duplicate removal, outlier-row removal and the "Drop rows" missing-value strategy, affect the training set only. Validation, test and new data otherwise retain their rows, keeping predictions aligned with the input records.
 
 ### Decide with evidence
 
@@ -140,7 +140,7 @@ Every step has **Preview** (nothing is saved), **Run**, and a page-level **Undo 
 
 ### Work with larger data
 
-The **Performance** page shows the size tier of your data and what DataForge does about it: sampling for expensive analyses and memory reduction through smaller dtypes. For files that do not fit in memory there is a chunked profile (`profile_in_chunks`) and optional DuckDB and Polars helpers.
+The **Performance** page shows the dataset size tier and the measures available to keep analysis responsive, including sampling and memory reduction through smaller data types. DataForge also provides utilities for selected large-file tasks: `profile_in_chunks` reads a CSV in chunks and reports row counts, missing-value counts and numeric statistics; categorical summaries are capped and may be partial. The optional DuckDB helper summarizes local CSV or Parquet files without loading them into pandas, while the Polars helper reads a limited CSV preview. The main preparation workflow still loads the dataset into memory; these utilities do not make the full pipeline out-of-core.
 
 ## Quick start
 
@@ -163,12 +163,26 @@ cd DataForge
 
 # 2. Create an isolated environment (recommended)
 python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
+```
 
-# 3. Install the dependencies
+Activate the environment.
+
+macOS and Linux:
+
+```bash
+source .venv/bin/activate
+```
+
+Windows PowerShell:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Install the dependencies and launch the app:
+
+```bash
 pip install -r requirements.txt
-
-# 4. Launch the app
 streamlit run app.py
 ```
 
@@ -196,26 +210,32 @@ import pandas as pd
 from dataforge import build_pipeline, make_spec, dumps, loads, apply_saved, to_script, split_frame
 from dataforge.defaults import default_cfg
 
+# Load the dataset and choose the target column.
 df = pd.read_csv("customers.csv")
 target = "churn"
 
-# 1. Split first
-split = dict(test_pct=20, val_pct=10, seed=42, stratify=True, balance=None)
-train, val, test, notes = split_frame(df, target, **{k: split[k] for k in ("test_pct", "val_pct", "seed", "stratify")})
+# 1. Split before fitting preprocessing steps.
+split = {"test_pct": 20, "val_pct": 10, "seed": 42, "stratify": True}
+train_raw, val_raw, test_raw, notes = split_frame(df, target, **split)
 
-# 2. Learn from the training set only, then apply to the others
+# 2. Fit the pipeline on training data, then transform the other sets.
 cfg = default_cfg(target_is_class=True)
 pipe = build_pipeline(cfg, target)
-train_ready = pipe.fit_transform(train)
-val_ready, test_ready = pipe.transform(val), pipe.transform(test)
+train_ready = pipe.fit_transform(train_raw)
+val_ready = pipe.transform(val_raw) if val_raw is not None else None
+test_ready = pipe.transform(test_raw)
 
-# 3. Save the pipeline and a script that reproduces it
-spec = make_spec(pipe, cfg, split, train, name="customers")
-open("pipeline.json", "w").write(dumps(spec))
-open("prepare.py", "w").write(to_script(spec, "customers.csv"))
+# 3. Save the fitted pipeline and a script that reproduces the preparation.
+spec = make_spec(pipe, cfg, split, train_raw, name="customers")
+with open("pipeline.json", "w", encoding="utf-8") as file:
+    file.write(dumps(spec))
+with open("prepare.py", "w", encoding="utf-8") as file:
+    file.write(to_script(spec, "customers.csv"))
 
-# 4. Later: apply it to new data
-new_ready, warnings = apply_saved(loads(open("pipeline.json").read()), pd.read_csv("new_customers.csv"))
+# 4. Apply the saved pipeline to new data.
+with open("pipeline.json", encoding="utf-8") as file:
+    saved_spec = loads(file.read())
+new_ready, warnings = apply_saved(saved_spec, pd.read_csv("new_customers.csv"))
 ```
 
 The generated `prepare.py` imports `dataforge`, so run it from the project folder or put that folder on `PYTHONPATH`.
@@ -252,10 +272,11 @@ DataForge is a multi-page Streamlit app on top of a core that knows nothing abou
 load -> [Types] -> split -> fit on TRAIN -> transform VALIDATION and TEST -> check leakage -> save pipeline
 ```
 
-- **Every preparation step is a transformer** with `fit(train)` and `transform(df)`. `transform` never modifies its input.
+- **Variable types are suggested before the split.** The Types page uses the loaded dataset to suggest column roles; you can confirm or override those suggestions. These are type classifications, not fitted imputation, encoding or scaling statistics.
+- **Every fitted preparation step is a transformer** with `fit(train)` and `transform(df)`. Data-dependent values are learned from training data, and `transform` applies them without modifying its input.
 - **The UI keeps only the settings of each step.** After every change the whole pipeline is rebuilt from the raw training set, so Undo is exact and the final result does not depend on the order of the clicks.
-- **Row-removing steps** (duplicates, outlier removal) and class balancing touch the training set only.
-- **The Lab and the Advisor never receive the test set.**
+- **Rows with a missing target are excluded before splitting.** After the split, row-removing preparation steps (duplicate removal, missing-value row dropping and outlier removal) and class balancing affect the training set only.
+- **The Lab and the Advisor have different roles.** The Lab evaluates preparation choices using training data only. The Advisor analyzes the loaded dataset to identify issues and explain options; it does not fit the final preprocessing pipeline.
 - **Pipelines are plain JSON.** Step types are looked up in a fixed list and unexpected fields are refused, so loading a pipeline file never runs code. There is no pickle anywhere.
 - **Reports and exports come from the same log and snapshots**, so they match what you actually did.
 
@@ -269,21 +290,21 @@ DataForge is meant to run on your own computer or in a private deployment.
 - **Links** accept only `http` and `https`, standard ports, and addresses that are public. Loopback, private, link-local, shared (100.64.0.0/10) and cloud-metadata addresses are refused, and every redirect is checked again.
 - **No code from files.** No pickle, JSON pipelines only, and the generated script contains only your settings as literals.
 - **Projects** use safe names and stay inside the project folder. Writes are staged in a sibling directory; existing projects are backed up and can be restored if replacement is interrupted. Stored data is checked against a fingerprint on opening.
-- **Your data stays in your session** unless you save a project, which writes to a folder on your own computer. Loading from a link makes a network request from the machine that runs DataForge.
-- **Not covered:** there is no login and no per-user separation, so anyone who can open the app can open every saved project. The personal-data scan is a hint, not a guarantee. Put authentication in front of the app before exposing it to the internet.
+- **Local data processing.** When you run DataForge locally, uploaded and pasted dataset contents are processed by the local application; they are not sent to a separate DataForge data-processing service. The interface loads fonts from Google Fonts, so your browser contacts Google to retrieve those font files. Loading data from a URL also makes an outbound request from the machine running DataForge. Projects that you save locally are written to the configured project folder.
+- **Hosted demo and access control.** The public demo runs on Streamlit Community Cloud, where uploaded data is processed on Streamlit servers. Do not upload private or sensitive datasets to the public demo. There is no login or per-user separation, so anyone who can access a self-hosted instance can access its saved projects. Put authentication in front of the app before exposing it to a network. The personal-data scan is a warning mechanism, not a guarantee.
 
 The full list, including what is not protected, is in [docs/SECURITY.md](docs/SECURITY.md).
 
 ## Testing and benchmarks
 
-The project has more than 100 automated tests. They cover the transformers, splitting, leakage, saved pipelines, the data contract, security checks, projects, the three sample datasets, and the consistency of the release files.
+The project includes more than 100 automated tests covering transformers, splitting, leakage checks, saved pipelines, data contracts, security checks, project persistence, sample datasets and release-file consistency.
 
 ```bash
 python -m pip install -r requirements.txt -r requirements-dev.txt
 python -m pytest
 ```
 
-A GitHub Actions workflow runs the tests on every push, on Python 3.10 and 3.12. Tests that need the files in `sample_data/` or PyArrow are skipped when those are not available.
+A GitHub Actions workflow runs the tests on every push, on Python 3.10 and 3.12. Tests that require optional packages or sample files are skipped when those requirements are not available.
 
 The benchmark suite checks the numbers against known answers (15 of 15 checks passed in the last run), measures speed and memory as the data grows, and compares DataForge with other profiling tools. On the benchmark machine (one CPU), a complete analysis of a 5,000 by 20 table took about one second, against 5.7 to 21.9 seconds for ydata-profiling and Sweetviz. The tools produce different outputs, so read this as time to a usable analysis, not as a like-for-like race, and expect different numbers on your machine. Details and the method are in [docs/BENCHMARK.md](docs/BENCHMARK.md).
 
@@ -331,6 +352,7 @@ DataForge/
 ├── CHANGELOG.md        What changed in each version
 ├── LICENSE             MIT License
 ├── NOTICE              Third-party attributions
+├── .gitattributes
 └── .gitignore
 ```
 
@@ -368,9 +390,15 @@ Every value a step learns, such as a median, a category list or a scaling range,
 </details>
 
 <details>
+<summary><b>What happens to rows with a missing target?</b></summary>
+<br>
+When you select a target column, rows with a missing value in that column are removed before the train, validation and test sets are created. This prevents records without a known target from entering a supervised split.
+</details>
+
+<details>
 <summary><b>Why were duplicate rows removed from my training set but not from the test set?</b></summary>
 <br>
-Row-removing steps act on the training set only. Validation, test and new data keep every row, so your predictions stay aligned with the rows you sent in.
+After splitting, preparation-time row-removal operations act on the training set only. Validation, test and new data retain their rows, so predictions stay aligned with the records you sent in.
 </details>
 
 <details>
@@ -412,7 +440,7 @@ Excel holds at most 1,048,575 rows per sheet. Export to CSV or Parquet instead.
 <details>
 <summary><b>Is my data uploaded or stored anywhere?</b></summary>
 <br>
-When you run DataForge yourself, your data stays in your current session and is cleared when you remove the dataset or close the session, and nothing is sent to a third party. Streamlit's own usage statistics are turned off in <code>.streamlit/config.toml</code>. Two things differ: a project that you save yourself is written to a folder on your own computer, and the hosted demo runs on Streamlit's servers, so do not upload sensitive data to it.
+When you run DataForge locally, uploaded and pasted dataset contents are processed by the local application and are not sent to a separate DataForge data-processing service. The interface loads fonts from Google Fonts, so your browser contacts Google to retrieve those files. Loading data from a URL also makes an outbound request from the machine running the app. Projects that you save are written to the configured project folder. The public demo runs on Streamlit Community Cloud, where uploaded data is processed on Streamlit's servers; do not upload private or sensitive data there. Streamlit usage statistics are disabled in <code>.streamlit/config.toml</code>.
 </details>
 
 <details>
@@ -430,7 +458,7 @@ Yes. The prepared train, validation and test sets are ordinary tables that you c
 <details>
 <summary><b>Can I use DataForge for client or commercial work?</b></summary>
 <br>
-Yes. The MIT License allows commercial and client work, and the data, pipelines, scripts and reports you create are yours. See <a href="#license">License</a>.
+Yes. The MIT License permits commercial use, modification and redistribution of DataForge, subject to its license terms. It does not change the rights or license terms that apply to third-party datasets and dependencies. See <a href="#license">License</a> and <code>NOTICE</code>.
 </details>
 
 <details>

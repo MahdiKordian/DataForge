@@ -26,9 +26,9 @@ Large data is previewed on a sample of the training set.
 
 ## Advisor and Lab: how to decide
 
-The Advisor lists options with pros, cons and when to use them; it does not choose for you. For missing values it can show each option's effect on the data.
-When the effect on a model matters, the **Lab** runs several choices through the same cross-validation on the training set and reports the mean and spread per option.
-A difference smaller than the fold-to-fold spread is reported as "no clear difference". The test set is not used.
+The Advisor examines the loaded dataset to identify potential issues and presents preparation options with their pros, cons and applicable conditions. For missing values, it can show how each option would affect the data. You remain in control of the preparation decisions.
+
+When you want to evaluate the impact of preparation choices on model performance, the **Lab** compares alternatives using the same cross-validation procedure on the training set only. It reports the mean score and fold-to-fold spread for each option. Differences smaller than the fold-to-fold spread are reported as "no clear difference". Validation and test data are not used in this comparison.
 
 ## Saving and repeating your work
 
@@ -45,5 +45,12 @@ A difference smaller than the fold-to-fold spread is reported as "no clear diffe
 
 ## Big data
 
-The **Performance** page shows the size tier and what DataForge does about it (sampling for analyses, memory reduction). For files that do not fit in memory use
-`dataforge.scale.profile_in_chunks` (exact summary, chunk by chunk), `duckdb_summary` or `polars_head` (optional packages).
+The **Performance** page shows the dataset size tier and the available measures for keeping analysis responsive, including sampling and memory reduction.
+
+For selected large-file tasks, DataForge also provides:
+
+- `profile_in_chunks` reads CSV files in chunks and calculates row counts, missing-value counts, and numeric statistics, including mean, standard deviation, minimum and maximum. Categorical summaries are capped and may be incomplete.
+- `duckdb_summary` uses DuckDB to summarize local CSV or Parquet files without loading them into pandas.
+- `polars_head` uses Polars to read a limited CSV preview, with a default limit of 100,000 rows.
+
+These utilities support selected inspection tasks. The main data preparation workflow still loads the dataset into memory and does not provide fully out-of-core pipeline execution.

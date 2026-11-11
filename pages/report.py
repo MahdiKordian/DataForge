@@ -135,7 +135,13 @@ def find_issues(df, target):
     if target in df.columns:
         s = df[target].dropna()
         if df[target].isna().any():
-            out.append((3, f"Target `{target}` has {int(df[target].isna().sum())} missing values", "Clean"))
+            out.append(
+                (
+                    3,
+                    f"Target `{target}` has {int(df[target].isna().sum())} missing values",
+                    "Split",
+                )
+            )
         if len(s) and is_class(s) and s.value_counts(normalize=True).min() < 0.2:
             out.append((2, f"Target `{target}` is imbalanced", "Transform"))
     return sorted(out, key=lambda x: -x[0])

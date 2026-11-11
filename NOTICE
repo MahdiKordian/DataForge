@@ -37,7 +37,8 @@ Sample datasets in the sample_data folder. They are not part of DataForge and
 are not covered by the MIT License of DataForge. Check each dataset's original terms
 before you use or redistribute it.
 
-- Ames Housing, by Dean De Cock.
-- Palmer Penguins, by Dr. Kristen Gorman and the Palmer Station LTER,
-  packaged by Allison Horst and Alison Hill.
-- Telco Customer Churn, an IBM sample dataset.
+- **Ames Housing:** Created by Dean De Cock. Original dataset: https://jse.amstat.org/v19n3/decock/AmesHousing.txt. Research publication: https://doi.org/10.1080/10691898.2011.11889627.
+
+- **Palmer Penguins:** Collected by Dr. Kristen Gorman and the Palmer Station LTER, and packaged by Allison Horst and Alison Hill. Source repository: https://github.com/allisonhorst/palmerpenguins. Upstream license: CC0-1.0.
+
+- **Telco Customer Churn:** IBM sample dataset. Source repository: https://github.com/IBM/telco-customer-churn-on-icp4d. Review the source repository's license and any data-specific terms before redistributing the dataset.

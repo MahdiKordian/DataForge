@@ -326,7 +326,7 @@ def ui(step, df, t, key):
         p["per_column"] = dict(d.get("per_column", {}))
         if p["per_column"]:
             b.caption(f"{len(p['per_column'])} column(s) use the choice you made on the Advisor page.")
-        p["drop_missing_target"] = bool(t) and b.checkbox("Remove rows where the target is missing", True, key=k("tm"))
+        st.caption("Rows with a missing target are excluded automatically before the split.")
     elif step == "Transform":
         cont = continuous(df, t)
         p["outliers"] = a.selectbox("Outliers", OUTLIERS, index=OUTLIERS.index(d["outliers"]), key=k("out"))

@@ -6,12 +6,12 @@ from core import (KINDS, PAGES, SAMPLES, VERSION, commit, find_column, go, sampl
                   init_state, load_sample, read_upload)
 
 STEPS = [
-    ("Load", "Upload a file or pick a sample."),
-    ("Clean", "Fix missing values, duplicates and messy text."),
-    ("Transform", "Tame outliers and skewed columns."),
-    ("Encode", "Turn categories into numbers."),
-    ("Scale", "Bring columns to a similar range."),
-    ("Split", "Create train, validation and test sets."),
+    ("Import", "Load a dataset from a file, URL, pasted table or sample."),
+    ("Inspect", "Review data quality, confirm variable types and explore Advisor findings."),
+    ("Analyze", "Examine distributions, relationships, missing-data patterns and target behavior."),
+    ("Prepare", "Split first, then clean, transform, encode and scale."),
+    ("Validate", "Check datasets against data contracts and review leakage findings."),
+    ("Export", "Download prepared datasets, reusable pipelines, Python scripts and reports."),
 ]
 
 CSS = """
@@ -113,8 +113,8 @@ st.markdown(
     '<div class="lp"><section class="lp-hero">'
     f'<div class="lp-brand"><span class="fire">🔥</span>DataForge<span class="lp-chip">{html.escape(VERSION)}</span></div>'
     "<h1>Get your data <em>ready for machine learning.</em></h1>"
-    "<p>Load a dataset, see what is wrong with it, fix it step by step "
-    "and export something your model can use.</p>"
+    "<p>Inspect your data, evaluate preparation options, apply transformations, "
+    "and export prepared datasets, a reusable pipeline and a report.</p>"
     "</section></div>",
     unsafe_allow_html=True,
 )
@@ -181,4 +181,7 @@ st.markdown(steps_html(), unsafe_allow_html=True)
 
 st.write("")
 st.page_link(PAGES["about"], icon=":material/auto_awesome:", label="About DataForge")
-st.caption("Your data stays in the current session and is not stored anywhere.")
+st.caption(
+    "Your dataset remains available in the current session. "
+    "Save a project to preserve your work in the configured project folder."
+)

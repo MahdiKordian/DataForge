@@ -44,7 +44,7 @@ load → [Types] → split → fit on TRAIN → transform VALIDATION and TEST �
 2. The UI keeps only the *settings* of each step. After every change the whole pipeline is rebuilt from the raw training set, so
    Undo is exact and the final result never depends on the order the user clicked.
 3. `Remove rows` for outliers and class balancing touch the training set only.
-4. The Lab and the Advisor never receive the test set.
+4. The Advisor examines the loaded dataset and presents findings and preparation options. The Lab evaluates preparation choices through cross-validation on the training set only. Validation and test data are reserved from this comparison.
 
 ## Data flow in the UI
 

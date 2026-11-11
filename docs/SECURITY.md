@@ -22,6 +22,7 @@ DataForge is meant to run on your own computer or in a private deployment. This 
 - **Memory.** Files are read into memory. The size limit protects against accidents, not against many simultaneous large uploads.
 - **Pipeline and project files contain learned values** (category names, means). If a column holds personal data and is encoded, those values are in the file. Treat the files like the data.
 - **Streamlit itself** (cookies, XSRF, websocket origin) should be configured for your deployment; see Streamlit's deployment documentation.
+- **External font requests.** The interface references Google Fonts for typography. The browser may contact Google's font services to retrieve font files. These requests are for interface assets and do not include dataset contents.
 
 ## Reporting a security problem
 

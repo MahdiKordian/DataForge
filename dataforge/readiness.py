@@ -41,8 +41,15 @@ def readiness(df, target=None, split_done=False, train=None, val=None, test=None
         _chk("Train/test split", bool(split_done), 3, "Split done." if split_done else "No split yet.", "Run Split first."),
     ]
     if target is not None and target in df.columns:
-        checks.append(_chk("Target has no missing values", not df[target].isna().any(), 3,
-                           f"{int(df[target].isna().sum())} missing target value(s).", "Run Clean."))
+        checks.append(
+            _chk(
+                "Target has no missing values",
+                not df[target].isna().any(),
+                3,
+                f"{int(df[target].isna().sum())} missing target value(s).",
+                "Run Split again to exclude rows with a missing target.",
+            )
+        )
         s = df[target].dropna()
         if len(s) and is_classification(s):
             share = float(s.value_counts(normalize=True).min())

@@ -29,14 +29,14 @@ STEP_TEXT = {
 STEPS = [(name, STEP_TEXT[name]) for name in WORKFLOW]
 
 FEATURES = [
-    ("No leakage by design", "The data is split first. Every step learns only from the training set and is then applied to validation and test."),
-    ("Advisor, not autopilot", "It finds problems and lays out options with pros and cons. You decide, and each decision is recorded."),
+    ("No leakage by design","The data is split first. Fitted preprocessing transformations learn from the training set and are consistently applied to validation and test data."),
+    ("Advisor, not autopilot","It examines the loaded dataset, identifies potential issues and presents preparation options with their pros and cons. You make the decisions."),
     ("Variable types", "Zip codes, ids and ordinal scales are not treated as plain numbers. DataForge guesses, shows how sure it is, and you confirm."),
     ("Analysis that fits the task", "Classification, regression, time series or unsupervised: relationships, missing-data patterns, drift and class balance."),
     ("Data contract", "Write down what a valid file looks like and check every new file against it before it reaches your pipeline."),
     ("Reproducible output", "Save the fitted pipeline as one JSON file, re-run it on new data, or export it as a Python script."),
     ("Preparation lab", "Compare several preparation choices with cross-validation on the training set. The test set is never touched."),
-    ("Local and careful", "Upload and link checks, personal-data warnings, projects saved on your own computer, and sampling for large files."),
+    ("Local and careful","File and URL validation, personal-data warnings, configurable project storage, and memory-aware tools for working with larger datasets."),
 ]
 
 
