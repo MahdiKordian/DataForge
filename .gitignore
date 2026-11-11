@@ -19,5 +19,10 @@ build/
 # DataForge
 .dataforge/
 
+# Environment files
+.env
+.env.*
+!.env.example
+
 # OS
 Thumbs.db
