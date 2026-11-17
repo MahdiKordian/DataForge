@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 import pandas as pd
 
-from dataforge import benchmark as BM
+from dataforge_engine import benchmark as BM
 
 rows, cols = (int(sys.argv[1]), int(sys.argv[2])) if len(sys.argv) > 2 else (5_000, 20)
 tools = tuple(sys.argv[3:]) or tuple(BM.TOOLS)

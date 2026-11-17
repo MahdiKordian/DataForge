@@ -7,7 +7,7 @@ import pandas as pd
 import streamlit as st
 
 from core import workflow_bar
-from dataforge import balance_train, build_pipeline, leakage_report, split_frame
+from dataforge_engine import balance_train, build_pipeline, leakage_report, split_frame
 
 PAGES = {"dataset": "pages/dataset.py", "dashboard": "pages/dashboard.py"}
 STEPS = ["Split", "Clean", "Transform", "Encode", "Scale"]

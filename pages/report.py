@@ -7,10 +7,10 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from dataforge import readiness as compute_readiness
-from dataforge import analysis as AN, reporting as RP, target as TG
-from dataforge.types import infer_types
-from dataforge.security import pii_columns
+from dataforge_engine import readiness as compute_readiness
+from dataforge_engine import analysis as AN, reporting as RP, target as TG
+from dataforge_engine.types import infer_types
+from dataforge_engine.security import pii_columns
 import streamlit.components.v1 as components
 
 PAGES = {"dataset": "pages/dataset.py"}

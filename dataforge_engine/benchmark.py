@@ -164,8 +164,8 @@ except ImportError:
 import pandas as pd
 df = pd.read_parquet(sys.argv[2]); tool = sys.argv[1]
 if tool == "dataforge":
-    from dataforge import analysis as A
-    from dataforge.benchmark import tasks
+    from dataforge_engine import analysis as A
+    from dataforge_engine.benchmark import tasks
     fns = tasks(df); keep = ["profile numeric", "profile categorical", "quality checks", "correlations", "mixed associations", "missing analysis"]
     def run(): [fns[k]() for k in keep]
 elif tool == "ydata_minimal":

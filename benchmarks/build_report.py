@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 import pandas as pd  # noqa: E402
 
-from dataforge import benchmark as BM  # noqa: E402
+from dataforge_engine import benchmark as BM  # noqa: E402
 
 R = ROOT / "benchmarks" / "results"
 env = BM.environment()

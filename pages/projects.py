@@ -2,9 +2,9 @@
 import streamlit as st
 
 from core import clear_all, read_upload
-from dataforge import projects as P
-from dataforge.scale import content_fingerprint, fingerprint
-from dataforge.security import UnsafeInput, pii_columns
+from dataforge_engine import projects as P
+from dataforge_engine.scale import content_fingerprint, fingerprint
+from dataforge_engine.security import UnsafeInput, pii_columns
 
 ss = st.session_state
 for k_, v_ in {"df": None, "df_name": "dataset", "target": None, "log": [], "snapshots": [], "decisions": {}, "advisor_params": {}}.items():

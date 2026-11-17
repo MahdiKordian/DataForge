@@ -6,8 +6,8 @@ import pandas as pd
 import streamlit as st
 
 from core import go, read_upload, workflow_bar
-from dataforge.security import pii_columns
-from dataforge import (SchemaError, SpecError, apply_saved, compare, dumps, loads, make_spec, refit, to_script,
+from dataforge_engine.security import pii_columns
+from dataforge_engine import (SchemaError, SpecError, apply_saved, compare, dumps, loads, make_spec, refit, to_script,
                        validate_contract)
 
 ss = st.session_state

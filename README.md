@@ -203,12 +203,12 @@ DataForge has no login and no per-user separation. Read [Security and privacy](#
 
 ## Use it from Python
 
-The core in `dataforge/` does not depend on Streamlit, so everything the app does can be scripted. Run this from the project folder.
+The core, published as `dataforge-engine` (import name `dataforge_engine`), does not depend on Streamlit, so everything the app does can be scripted.
 
 ```python
 import pandas as pd
-from dataforge import build_pipeline, make_spec, dumps, loads, apply_saved, to_script, split_frame
-from dataforge.defaults import default_cfg
+from dataforge_engine import build_pipeline, make_spec, dumps, loads, apply_saved, to_script, split_frame
+from dataforge_engine.defaults import default_cfg
 
 # Load the dataset and choose the target column.
 df = pd.read_csv("customers.csv")
@@ -238,7 +238,7 @@ with open("pipeline.json", encoding="utf-8") as file:
 new_ready, warnings = apply_saved(saved_spec, pd.read_csv("new_customers.csv"))
 ```
 
-The generated `prepare.py` imports `dataforge`, so run it from the project folder or put that folder on `PYTHONPATH`.
+The generated `prepare.py` imports `dataforge_engine`, so it runs anywhere the package is installed.
 
 ## Supported inputs and outputs
 
@@ -318,7 +318,7 @@ python benchmarks/run_benchmark.py --quick    # smaller sizes; rewrites benchmar
 DataForge/
 ├── app.py              Entry point: page config, navigation, sidebar
 ├── core.py             Shared UI helpers: state, navigation, file readers, samples
-├── dataforge/          The core (pandas, NumPy, SciPy; no Streamlit)
+├── dataforge_engine/   The core (pandas, NumPy, SciPy; no Streamlit)
 │   ├── transformers.py   Preparation steps with fit and transform
 │   ├── pipeline.py       Ordered pipeline, schema check, save and restore
 │   ├── splitting.py      Random and stratified split, class balancing
