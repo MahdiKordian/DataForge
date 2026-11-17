@@ -3,7 +3,7 @@ import pandas as pd
 import streamlit as st
 
 from core import go, workflow_bar
-from dataforge import diagnose, merge, what_if_missing
+from dataforge_engine import diagnose, merge, what_if_missing
 
 SEV = {3: "🔴", 2: "🟠", 1: "🟡"}
 

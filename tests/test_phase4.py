@@ -8,15 +8,15 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from dataforge import (
+from dataforge_engine import (
     benchmark as BM,
     lab as LB,
     projects as PR,
     scale as SC,
     security as SE,
 )
-from dataforge import build_pipeline, split_frame
-from dataforge.pipeline import Pipeline
+from dataforge_engine import build_pipeline, split_frame
+from dataforge_engine.pipeline import Pipeline
 from tests.test_core import CFG, toy
 
 

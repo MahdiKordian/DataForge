@@ -7,7 +7,7 @@ import pandas as pd
 import streamlit as st
 
 from core import clear_all
-from dataforge import readiness as compute_readiness
+from dataforge_engine import readiness as compute_readiness
 
 PAGES = {
     "dataset": "pages/dataset.py",

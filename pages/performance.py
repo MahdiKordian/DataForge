@@ -4,8 +4,8 @@ import pandas as pd
 import streamlit as st
 
 from core import go
-from dataforge import benchmark as BM
-from dataforge import scale as SC
+from dataforge_engine import benchmark as BM
+from dataforge_engine import scale as SC
 
 ss = st.session_state
 for k_, v_ in {"df": None, "target": None, "log": [], "snapshots": []}.items():

@@ -2,10 +2,10 @@
 import numpy as np
 import pandas as pd
 
-from dataforge import analysis as A
-from dataforge import build_pipeline, dumps, loads, make_spec, apply_saved, split_frame, target as T
-from dataforge.reporting import key_points
-from dataforge.types import infer_types
+from dataforge_engine import analysis as A
+from dataforge_engine import build_pipeline, dumps, loads, make_spec, apply_saved, split_frame, target as T
+from dataforge_engine.reporting import key_points
+from dataforge_engine.types import infer_types
 from tests.test_core import CFG
 
 
@@ -49,7 +49,7 @@ def test_confirmed_types_drive_the_pipeline():
 
 
 def test_ordinal_follows_the_users_order_and_warns_on_unseen():
-    from dataforge.transformers import TypeCaster
+    from dataforge_engine.transformers import TypeCaster
     tc = TypeCaster(types={"s": "ordinal"}, orders={"s": ["low", "mid", "high"]}).fit(pd.DataFrame({"s": ["low", "mid", "high"]}))
     out = tc.transform(pd.DataFrame({"s": ["High", "low", "weird", None]}))
     assert out["s"].iloc[:2].tolist() == [2.0, 0.0] and pd.isna(out["s"].iloc[2]) and tc.warnings_

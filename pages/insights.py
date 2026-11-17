@@ -4,8 +4,8 @@ import pandas as pd
 import streamlit as st
 
 from core import go, workflow_bar
-from dataforge import analysis as A, target as TG
-from dataforge.types import infer_types
+from dataforge_engine import analysis as A, target as TG
+from dataforge_engine.types import infer_types
 
 ss = st.session_state
 for k_, v_ in {

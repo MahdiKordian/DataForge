@@ -4,8 +4,8 @@ import streamlit as st
 from datetime import datetime
 
 from core import go, workflow_bar
-from dataforge.security import pii_columns
-from dataforge.types import TYPES, WHAT_HAPPENS, infer_types
+from dataforge_engine.security import pii_columns
+from dataforge_engine.types import TYPES, WHAT_HAPPENS, infer_types
 
 ss = st.session_state
 for k_, v_ in {"df": None, "target": None, "log": [], "snapshots": [], "var_types": None, "var_orders": {}}.items():

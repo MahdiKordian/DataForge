@@ -6,9 +6,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from dataforge import (SpecError, apply_saved, build_pipeline, compare, diagnose, dumps, infer_contract, loads,
+from dataforge_engine import (SpecError, apply_saved, build_pipeline, compare, diagnose, dumps, infer_contract, loads,
                        make_spec, merge, refit, split_frame, to_script, validate_contract, what_if_missing)
-from dataforge.pipeline import Pipeline
+from dataforge_engine.pipeline import Pipeline
 from tests.test_core import CFG, toy
 
 

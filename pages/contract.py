@@ -6,7 +6,7 @@ import pandas as pd
 import streamlit as st
 
 from core import go, read_upload, workflow_bar
-from dataforge import infer_contract, validate_contract
+from dataforge_engine import infer_contract, validate_contract
 
 KINDS = ["numeric", "text", "datetime"]
 

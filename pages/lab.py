@@ -3,7 +3,7 @@ import altair as alt
 import streamlit as st
 
 from core import go, workflow_bar
-from dataforge import lab as LB
+from dataforge_engine import lab as LB
 
 ss = st.session_state
 for k_, v_ in {"df": None, "target": None, "log": [], "snapshots": [], "split_done": False}.items():
@@ -28,7 +28,7 @@ if not t:
     st.stop()
 
 train = ss.raw_splits["train"]
-from dataforge.splitting import is_classification
+from dataforge_engine.splitting import is_classification
 is_class = is_classification(train[t].dropna())
 st.write(f"Target `{t}` · {'classification' if is_class else 'regression'} · {len(train):,} training rows")
 
