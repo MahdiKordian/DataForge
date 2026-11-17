@@ -9,7 +9,7 @@ import pandas as pd
 import streamlit as st
 
 APP_NAME = "DataForge"
-VERSION = "v2.0.1"
+VERSION = "v2.1.0"
 NONE = "None (unsupervised)"
 
 ROOT = Path(__file__).resolve().parent
