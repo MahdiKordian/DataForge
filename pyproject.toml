@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "dataforge-engine"
 version = "2.0.1"
 description = "Leakage-aware data preparation for machine learning: fit on train only, reusable pipelines, data contracts."
-readme = "README.md"
+readme = "README_PYPI.md"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
