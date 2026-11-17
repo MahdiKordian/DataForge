@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from dataforge import benchmark as BM
+from dataforge_engine import benchmark as BM
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--quick", action="store_true", help="smaller sizes")

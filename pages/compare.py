@@ -3,7 +3,7 @@ import pandas as pd
 import streamlit as st
 
 from core import go, read_upload, workflow_bar
-from dataforge import compare
+from dataforge_engine import compare
 
 ss = st.session_state
 for k_, v_ in {"df": None, "target": None, "log": [], "snapshots": []}.items():

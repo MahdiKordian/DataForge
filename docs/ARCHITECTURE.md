@@ -6,7 +6,7 @@ The core can be tested, scripted and reused without a browser.
 ```
 pages/*.py        user interface (Streamlit): forms, tables, charts, buttons
 core.py           shared UI helpers: navigation, file reading, workflow bar
-dataforge/        the core (pandas, numpy, scipy; no Streamlit)
+dataforge_engine/ the core (pandas, numpy, scipy; no Streamlit)
 tests/            automated tests (pytest)
 benchmarks/       speed, memory and correctness measurements
 ```

@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dataforge-engine"
+version = "2.0.1"
+description = "Leakage-aware data preparation for machine learning: fit on train only, reusable pipelines, data contracts."
+readme = "README_PYPI.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Mahdi Kordian" }]
+keywords = ["machine-learning", "data-preparation", "preprocessing", "data-leakage", "pandas", "scikit-learn"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "pandas>=2.2.2",
+    "numpy>=2.0.0",
+    "scipy>=1.14.0",
+    "scikit-learn>=1.5.0",
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+fast = ["polars>=1.0", "duckdb>=1.0"]
+
+[project.urls]
+Homepage = "https://github.com/MahdiKordian/DataForge"
+Issues = "https://github.com/MahdiKordian/DataForge/issues"
+Changelog = "https://github.com/MahdiKordian/DataForge/blob/main/CHANGELOG.md"
+
+[tool.setuptools]
+packages = ["dataforge_engine"]

@@ -5,10 +5,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from dataforge import build_pipeline, split_frame
-from dataforge import security as SE
-from dataforge.scale import optimize_dtypes
-from dataforge.transformers import (
+from dataforge_engine import build_pipeline, split_frame
+from dataforge_engine import security as SE
+from dataforge_engine.scale import optimize_dtypes
+from dataforge_engine.transformers import (
     FeatureScaler,
     MissingValueImputer,
     OutlierHandler,

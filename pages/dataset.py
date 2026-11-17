@@ -16,7 +16,7 @@ from core import (
     excel_sheet_names,
 )
 
-from dataforge.security import check_upload, safe_fetch
+from dataforge_engine.security import check_upload, safe_fetch
 
 PAGES = {
     "dashboard": "pages/dashboard.py",

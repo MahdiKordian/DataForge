@@ -230,7 +230,7 @@ def parse_bytes(raw: bytes, filename: str) -> pd.DataFrame:
 
 def read_upload(f) -> tuple[pd.DataFrame, str]:
     """f is a Streamlit UploadedFile. Returns (dataframe, dataset name)."""
-    from dataforge.security import check_upload
+    from dataforge_engine.security import check_upload
     raw = f.getvalue()
     check_upload(f.name, raw)
     return parse_bytes(raw, f.name), stem(f.name)

@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from dataforge import SchemaError, balance_train, build_pipeline, leakage_report, readiness, split_frame
-from dataforge.transformers import (CategoricalEncoder, FeatureScaler, InfToNan, MissingValueImputer,
+from dataforge_engine import SchemaError, balance_train, build_pipeline, leakage_report, readiness, split_frame
+from dataforge_engine.transformers import (CategoricalEncoder, FeatureScaler, InfToNan, MissingValueImputer,
                                     NotFittedError, OutlierHandler)
 
 CFG = {
