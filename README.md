@@ -15,7 +15,7 @@ Inspect your data, evaluate preparation options, apply transformations, and expo
 
 <br><br>
 
-[![Version](https://img.shields.io/badge/version-v2.0.1-2ea44f)](https://github.com/MahdiKordian/DataForge/releases/tag/v2.0.1)
+[![Version](https://img.shields.io/badge/version-v2.1.0-2ea44f)](https://github.com/MahdiKordian/DataForge/releases/tag/v2.1.0)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Tests](https://github.com/MahdiKordian/DataForge/actions/workflows/tests.yml/badge.svg)](https://github.com/MahdiKordian/DataForge/actions/workflows/tests.yml)
 [![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org)

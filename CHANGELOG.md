@@ -3,6 +3,16 @@
 All notable changes to DataForge are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## [2.1.0] - 2026-11-17
+
+### Changed
+
+- The core package is now named `dataforge_engine` (it was `dataforge`). Update imports from `dataforge` to `dataforge_engine`.
+
+### Added
+
+- `pyproject.toml`, so the core can be installed on its own with `pip install dataforge-engine`.
+
 ## [2.0.1] - 2026-11-11
 
 A maintenance release focused on reliability, data integrity, usability, and development workflow.
@@ -82,6 +92,7 @@ First public release, under the Apache License 2.0. Loading, a health dashboard,
 
 Copies of version 1.0.0 that were already published stay under the Apache License 2.0. The MIT License applies from version 2.0.0.
 
+[2.1.0]: https://github.com/MahdiKordian/DataForge/releases/tag/v2.1.0
 [2.0.1]: https://github.com/MahdiKordian/DataForge/releases/tag/v2.0.1
 [2.0.0]: https://github.com/MahdiKordian/DataForge/releases/tag/v2.0.0
 [1.0.0]: https://github.com/MahdiKordian/DataForge/releases/tag/v1.0.0
